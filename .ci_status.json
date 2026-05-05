@@ -1,18 +1,7 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "status": "pending",
-  "timestamp": "2026-05-02T01:00:29Z",
-=======
   "status": "fail",
-  "timestamp": "2026-05-02T01:04:16Z",
->>>>>>> Stashed changes
-  "commit": "62739cc8631cae9a38e13ac3938a65a4f3f23312",
-=======
-  "status": "fail",
-  "timestamp": "2026-05-02T01:01:26Z",
-  "commit": "dc89864ef373530de040dc36822c7a17159a791a",
->>>>>>> Stashed changes
+  "timestamp": "2026-05-05T15:09:32Z",
+  "commit": "bfd2b6a08f8387e9773f52b9c71ae8e7e8ad8239",
   "branch": "testFlight",
   "environment": "github_actions_docker_wsl",
   "workflow": "SetupCase CI v2"
