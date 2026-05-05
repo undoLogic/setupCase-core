@@ -4,6 +4,7 @@ namespace App\Model\Table;
 
 use App\Util\Assets;
 use App\Util\SetupCase;
+use App\Util\Translate as Translate;
 use Cake\Datasource\ConnectionManager;
 use Cake\Log\Log;
 use Cake\ORM\Table;
@@ -16,6 +17,21 @@ class TranslationsTable extends Table
         $this->addBehavior('Timestamp');
         parent::initialize($config);
         $this->setTable('translations');
+
+
+        //create database
+        /*
+         * CREATE TABLE `translations` (`id` INT NOT NULL AUTO_INCREMENT , `keyword` VARCHAR(1000) NULL , `en` VARCHAR(1000) NULL , `fr` VARCHAR(1000) NULL , `created` DATETIME NOT NULL , `modified` DATETIME NOT NULL , PRIMARY KEY (`id`)) ENGINE = MyISAM;
+         */
+
+        //put this in the initialize in Appcontroller
+        /*
+         $this->Translate = new Translate([
+            'lang' => $this->request->getAttribute('lang')
+        ]);
+        $this->translate = $this->Translate;
+        $this->set('translate', $this->Translate);
+         */
 
 
 

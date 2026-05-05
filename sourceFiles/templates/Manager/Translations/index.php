@@ -16,7 +16,6 @@
 
                 <div class="input-group">
 
-                    <a href="#" onclick="showImport()" class="btn btn-warning">Import CSV</a>
 
                     <?= $this->Html->link($translate->word('Reset'), [
                         'action'=>'index',"?"=>['reset'=>true]
