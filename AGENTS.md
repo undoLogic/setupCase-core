@@ -1,96 +1,335 @@
 # AGENTS.md
 
 ## Purpose
-Repository-specific instructions for coding, reviews, and collaboration.
+Repository-specific instructions for development, code reviews, refactoring, and collaboration.
 
-## Tech Stack
-- PHP (CakePHP)
-- Frontend templates in `sourceFiles/templates`
+---
 
-## Coding Rules
-- Keep changes small and targeted to the requested task.
-- Preserve existing naming/style in touched files.
+# Tech Stack
+
+- PHP (`CakePHP`)
+- Frontend templates located under:
+    - `sourceFiles/templates`
+
+---
+
+# Core Development Philosophy
+
+- Keep changes small, targeted, and task-focused.
+- Preserve existing conventions in touched files.
 - Avoid unrelated refactors unless explicitly requested.
-- Prefer readable code over clever shortcuts.
-- Keep controllers slim and push data/logic into models when possible (fat models).
-- Add comments only when logic is non-obvious.
-- Any public method in a table must return a response array with at least:
-    - `STATUS` (e.g., `200`)
-    - `MSG` (short description of what happened)
-    - plus any additional needed data.
-- Private functions may return simple values without arrays.
-- Keep public functions short enough to fit on one screen (less then 35 lines).
-- If a public function gets long, split logic into private helper functions.
-- Name private helper functions similar to their related public function prepend public function name then underscore private function name).
-- For helper-to-public data flow, set class properties in private functions and read them in the public function.
-- Do not rely on returning values from private helper functions for this pattern.
-- Private functions may be longer than one screen when needed (no limit).
-- Keep each template file short enough to fit on one screen.
-- Always add the entire bootstrap structure to this template file
-- When setting up the bootstrap structure, always separate filters from the body
-- If a template gets long, extract parts into elements, but keep the bootstrap overview
-- For base templates under `sourceFiles/templates/`, keep a short Bootstrap overview shell (row/col/card structure only).
-- Move detailed UI/content blocks into elements and render them from the base template.
-- Keep base templates under one screen whenever possible; place complexity in elements.
-- Elements may be longer than one screen (no limit).
-- Name template elements similar to the public function/action they support.
+- Prefer readable and maintainable code over clever shortcuts.
+- Keep controllers slim.
+- Push business logic and data handling into models whenever possible ("fat models").
+- Keep public functions and base templates short enough to fit on one screen whenever possible.
+- Move complexity into:
+    - private helper methods
+    - template elements
 
-## File Editing Rules
+---
+
+# Model / Table Rules
+
+## Public Table Methods
+
+All public methods in `Table` classes must return a response array containing at minimum:
+
+```php
+[
+    'STATUS' => 200,
+    'MSG' => 'Short description'
+]
+```
+
+Additional response data may be included as needed.
+
+---
+
+## Private Helper Functions
+
+- Private functions may return simple values.
+- Public functions should remain under approximately `35` lines whenever possible.
+- If a public function becomes too large:
+    - split logic into private helper functions
+    - keep the public method as an orchestration layer
+- Name helper methods using:
+    - `<publicFunctionName>_<helperName>()`
+
+Example:
+
+```php
+public function processInvoice()
+private function processInvoice_validate()
+private function processInvoice_save()
+```
+
+---
+
+## Helper Function Data Flow Pattern
+
+Preferred pattern:
+
+- Private helpers set class properties
+- Public methods consume those properties afterward
+
+Avoid excessive chaining of return values between private helper functions when possible.
+
+---
+
+# Template / View Rules
+
+## Base Template Philosophy
+
+Base templates should:
+
+- Keep a short Bootstrap overview structure
+- Show only high-level layout flow
+- Remain under one screen whenever possible
+
+Typical structure:
+
+```php
+container
+    row
+        filters
+        body
+```
+
+---
+
+## Template Extraction Rules
+
+If a template becomes too large:
+
+- Extract detailed sections into elements
+- Keep the base template as the high-level page shell
+
+Elements may exceed one screen if needed.
+
+---
+
+# Element Naming Convention
+
+## Folder Structure
+
+All new or refactored elements should follow:
+
+```text
+YEAR/PREFIX/CONTROLLER/ACTION_location
+```
+
+Example route:
+
+```text
+/dealer/en/rebate-sales/detail/10/2024
+```
+
+Element examples:
+
+```text
+sourceFiles/templates/element/2026/dealer/rebateSales/detail_table.php
+sourceFiles/templates/element/2026/dealer/rebateSales/detail_bottom.php
+sourceFiles/templates/element/2026/dealer/rebateSales/detail_sidebar.php
+```
+
+---
+
+## Naming Rules
+
+- Use camelCase for controller folders
+- Use lowercase with underscores for element filenames
+- Keep action name first within the filename
+
+Good:
+
+```text
+detail_table
+detail_totals
+detail_sidebar
+```
+
+Avoid:
+
+```text
+table_detail
+sidebar_detail
+```
+
+---
+
+## Year Folder Policy
+
+- Keep older year folders intact
+- Do not migrate older structures unless explicitly requested
+- Year folders allow gradual refactoring and cleanup over time
+
+---
+
+# File Editing Rules
+
 - Do not modify generated or vendor files unless explicitly requested.
-- Treat anything under `sourceFiles/webroot/modules` as vendor/original layout assets. Do not edit these files.
-- For layout/script/style overrides, place changes under `sourceFiles/webroot/js` or `sourceFiles/webroot/css` instead.
-- Prefer editing source files under `sourceFiles/`.
-- Keep ASCII unless the file already requires Unicode.
+- Treat anything under:
 
-## Testing and Verification
-- For template/view changes, verify rendered markup is valid and consistent.
-- For controller/model changes, run available project tests when possible.
-- If tests cannot be run, clearly state what was verified manually.
+```text
+sourceFiles/webroot/modules
+```
 
-## Linting and Cleanup Workflow
-- Run linting/formatting cleanup only when nothing is staged.
-- Pre-check before cleanup: `git diff --cached --quiet`.
-- If staged changes exist, do not run broad cleanup in the same commit.
-- Keep cleanup in a dedicated commit separate from functional changes.
-- When doing a basic manual lint pass, normalize method declaration indentation first.
-- Top-level class methods must use one class-level indent consistently (no extra leading indentation).
-- Prefer minimal indentation-only fixes when the request is about formatting consistency.
-- Cleanup commit message should clearly indicate structure/format-only scope.
-- Do not mix behavior changes with cleanup in the same commit.
+as vendor/original assets.
 
-## Pre-Commit Hook Policy
-- Pre-commit blocks when `public` PHP functions exceed one screen (default limit: `45` lines).
-- Methods without explicit visibility are treated as `public`.
-- `private` and `protected` function lengths are not limited by this hook.
-- Pre-commit blocks when base templates under `sourceFiles/templates/` exceed one screen (default limit: `45` lines).
-- Template elements under `sourceFiles/templates/element/` and `sourceFiles/templates/elements/` are exempt from template length limits.
-- Override function limit per commit with `PRECOMMIT_PUBLIC_FUNCTION_MAX_LINES=<n>`.
-- Override template limit per commit with `PRECOMMIT_TEMPLATE_MAX_LINES=<n>`.
-- Bypass this hook logic for one commit with `SOFT_PRECOMMIT_DISABLE=1`.
-- Skip all hooks for one commit with `git commit --no-verify`.
+Do not edit these files directly.
 
-## Git and Change Hygiene
-- Never revert user changes that are unrelated to the task.
-- Keep diffs minimal.
-- Make one logical change per commit when asked to commit.
+Instead:
 
-## Review Priorities
-When asked for a review, prioritize:
+- Put overrides under:
+    - `sourceFiles/webroot/js`
+    - `sourceFiles/webroot/css`
+
+Prefer editing source files under:
+
+```text
+sourceFiles/
+```
+
+---
+
+# Formatting and Cleanup Rules
+
+- Keep ASCII unless Unicode is already required.
+- Run cleanup/formatting only when no staged changes exist.
+
+Pre-check:
+
+```bash
+git diff --cached --quiet
+```
+
+If staged changes exist:
+
+- do not run broad cleanup
+- keep cleanup isolated in separate commits
+
+---
+
+## Formatting Consistency
+
+- Normalize method indentation first
+- Top-level class methods must align consistently
+- Prefer minimal formatting-only changes when the task is formatting-related
+
+---
+
+# Pre-Commit Hook Policy
+
+Pre-commit blocks when:
+
+- public PHP methods exceed:
+    - default: `45` lines
+- base templates exceed:
+    - default: `45` lines
+
+Exemptions:
+
+- `private`
+- `protected`
+- template elements under:
+    - `sourceFiles/templates/element/`
+    - `sourceFiles/templates/elements/`
+
+---
+
+## Hook Overrides
+
+Override public function limit:
+
+```bash
+PRECOMMIT_PUBLIC_FUNCTION_MAX_LINES=<n>
+```
+
+Override template limit:
+
+```bash
+PRECOMMIT_TEMPLATE_MAX_LINES=<n>
+```
+
+Temporarily disable soft checks:
+
+```bash
+SOFT_PRECOMMIT_DISABLE=1
+```
+
+Skip all hooks:
+
+```bash
+git commit --no-verify
+```
+
+---
+
+# Testing and Verification
+
+## Template Changes
+
+Verify:
+
+- rendered markup
+- Bootstrap structure consistency
+- responsive layout integrity
+
+---
+
+## Controller / Model Changes
+
+- Run project tests when possible
+- If tests cannot be run:
+    - clearly state what was manually verified
+
+---
+
+# Git and Change Hygiene
+
+- Never revert unrelated user changes
+- Keep diffs minimal
+- Make one logical change per commit when requested
+
+---
+
+# Review Priorities
+
+When reviewing code, prioritize:
+
 1. Bugs and regressions
-2. Security and data handling risks
-3. Missing validation/error handling
-4. Test gaps
+2. Security risks
+3. Data handling issues
+4. Validation and error handling
+5. Missing test coverage
 
-## Communication Preferences
-- Be concise and direct.
-- Include file paths for all changes.
-- State assumptions and blockers clearly.
+---
 
-## Local Conventions
-- Put reusable template snippets in `sourceFiles/templates/element/` when appropriate.
-- For all new or refactored template elements, use a year-prefixed folder under `sourceFiles/templates/element/` (example: `sourceFiles/templates/element/2026/...`).
-- Keep existing older year folders intact unless explicitly requested to migrate, so cleanup/deprecation can happen gradually.
-- Keep `CodeBlocks` examples simple and copy/paste-friendly.
+# Communication Preferences
 
-## Notes For Future Updates
-Add project-specific rules here over time (formatters, linters, test commands, deployment constraints).
+- Be concise and direct
+- Include file paths for changes
+- Clearly state:
+    - assumptions
+    - blockers
+    - limitations
+
+---
+
+# Local Conventions
+
+- Put reusable template snippets in:
+    - `sourceFiles/templates/element/`
+- Keep `CodeBlocks` examples simple and copy/paste friendly
+
+---
+
+# Future Project Rules
+
+Add additional project-specific rules here over time:
+
+- linters
+- deployment rules
+- CI/CD requirements
+- formatting standards
+- infrastructure constraints
