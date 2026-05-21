@@ -13,6 +13,24 @@ Repository-specific instructions for development, code reviews, refactoring, and
 
 ---
 
+# SetupCase Shared Code Block References
+
+These references are considered canonical implementation examples and reusable architectural foundations.
+
+| Reference Name | URL |
+|---|---|
+| Application Foundation | https://testflight.setupcase.com/en/code-blocks/application-foundation |
+| Responsive Table | https://testflight.setupcase.com/en/code-blocks/responsive-table |
+
+## Usage Rules
+
+- Reuse these structures whenever applicable before creating new implementations.
+- Maintain compatibility with existing SetupCase architectural conventions.
+- Prefer extending shared foundations over duplicating functionality.
+- Keep implementations copy/paste friendly and modular.
+
+---
+
 # Core Development Philosophy
 
 - Keep changes small, targeted, and task-focused.
@@ -52,8 +70,12 @@ Additional response data may be included as needed.
 - If a public function becomes too large:
     - split logic into private helper functions
     - keep the public method as an orchestration layer
-- Name helper methods using:
-    - `<publicFunctionName>_<helperName>()`
+
+Name helper methods using:
+
+```php
+<publicFunctionName>_<helperName>()
+```
 
 Example:
 
@@ -72,7 +94,7 @@ Preferred pattern:
 - Private helpers set class properties
 - Public methods consume those properties afterward
 
-Avoid excessive chaining of return values between private helper functions when possible.
+Avoid excessive chaining of return values between private helper functions whenever possible.
 
 ---
 
@@ -279,7 +301,7 @@ Verify:
 
 ## Controller / Model Changes
 
-- Run project tests when possible
+- Run project tests whenever possible
 - If tests cannot be run:
     - clearly state what was manually verified
 
@@ -289,7 +311,7 @@ Verify:
 
 - Never revert unrelated user changes
 - Keep diffs minimal
-- Make one logical change per commit when requested
+- Make one logical change per commit whenever requested
 
 ---
 
@@ -321,6 +343,7 @@ When reviewing code, prioritize:
 - Put reusable template snippets in:
     - `sourceFiles/templates/element/`
 - Keep `CodeBlocks` examples simple and copy/paste friendly
+- Reuse shared SetupCase foundations whenever practical before introducing new patterns
 
 ---
 
