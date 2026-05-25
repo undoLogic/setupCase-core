@@ -5,18 +5,35 @@ function Get-CiStatusInfo {
         [string]$StatusFilePath
     )
 
-    if (-not (Test-Path $StatusFilePath)) {
-        Write-Error ".ci_status.json not found: $StatusFilePath"
-        return $null
+    $result = [ordered]@{
+        FilePath  = $StatusFilePath
+        Exists    = $false
+        IsValid   = $false
+        Status    = ""
+        Commit    = ""
+        Timestamp = ""
+        Error     = ""
     }
 
-    try {
-        return Get-Content $StatusFilePath -Raw | ConvertFrom-Json -ErrorAction Stop
-    } catch {
-        Write-Error ".ci_status.json is invalid JSON"
-        Write-Error $_.Exception.Message
-        return $null
+    if (-not (Test-Path $StatusFilePath)) {
+        return [pscustomobject]$result
     }
+
+    $result.Exists = $true
+
+    try {
+        $statusJson = Get-Content $StatusFilePath -Raw | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        $result.Error = $_.Exception.Message
+        return [pscustomobject]$result
+    }
+
+    $result.IsValid = $true
+    $result.Status = [string]$statusJson.status
+    $result.Commit = [string]$statusJson.commit
+    $result.Timestamp = [string]$statusJson.timestamp
+
+    return [pscustomobject]$result
 }
 
 # Get the current Git branch name
@@ -36,31 +53,36 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($deployCommit)) {
 
 $ciStatusFile = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.ci_status.json"))
 $ciStatus = Get-CiStatusInfo -StatusFilePath $ciStatusFile
-if ($null -eq $ciStatus) {
-    exit 1
+
+if ($ciStatus.Exists) {
+    if (-not $ciStatus.IsValid) {
+        Write-Error ".ci_status.json is invalid JSON"
+        Write-Error "error: $($ciStatus.Error)"
+        exit 1
+    }
+
+    $ciState = [string]$ciStatus.Status
+    $ciCommit = [string]$ciStatus.Commit
+    $ciTimestamp = [string]$ciStatus.Timestamp
+
+    Write-Host "`n--- CI Gate ---"
+    Write-Host "status: $ciState"
+    Write-Host "commit: $ciCommit"
+    Write-Host "timestamp: $ciTimestamp"
+    Write-Host "deploy commit: $deployCommit"
+
+    if ($ciState -ne "success") {
+        Write-Error "Deployment blocked: CI status must be 'success'."
+        exit 1
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ciCommit) -or $ciCommit -ne $deployCommit) {
+        Write-Error "Deployment blocked: CI commit does not match deploy commit."
+        exit 1
+    }
+
+    Write-Host "CI gate passed for this commit."
 }
-
-$ciState = [string]$ciStatus.status
-$ciCommit = [string]$ciStatus.commit
-$ciTimestamp = [string]$ciStatus.timestamp
-
-Write-Host "`n--- CI Gate ---"
-Write-Host "status: $ciState"
-Write-Host "commit: $ciCommit"
-Write-Host "timestamp: $ciTimestamp"
-Write-Host "deploy commit: $deployCommit"
-
-if ($ciState -ne "success") {
-    Write-Error "Deployment blocked: CI status must be 'success'."
-    exit 1
-}
-
-if ([string]::IsNullOrWhiteSpace($ciCommit) -or $ciCommit -ne $deployCommit) {
-    Write-Error "Deployment blocked: CI commit does not match deploy commit."
-    exit 1
-}
-
-Write-Host "CI gate passed for this commit."
 
 
 $configFile = ".\config.json"
@@ -99,5 +121,4 @@ Write-Host "ssh $user@$url" $remoteCommandStripped
 
 Ssh "$user@$url" $remoteCommandStripped
 
-Start-Process "https://$liveURL"
-
+Start-Process "https://$url"
