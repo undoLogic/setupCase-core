@@ -5,7 +5,7 @@
 
 
 ```php
-//Added by SetupCase-BoilerPlate
+//Added by SetupCase-core
 ->add(new EncryptedCookieMiddleware(
     ['CookieAuth'],
     'CHANGEMEWITHSECURE'
@@ -71,7 +71,7 @@ foreach ($imports as $import) {
 
 if (strpos($contents, '->add(new EncryptedCookieMiddleware(') === false) {
     $insert = <<<'PHP'
-            //Added by SetupCase-BoilerPlate
+            //Added by SetupCase-core
             ->add(new EncryptedCookieMiddleware(
                 ['CookieAuth'],
                 'CHANGEMEWITHSECURE'

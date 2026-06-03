@@ -45,6 +45,6 @@
         <a class="nav-link" target="_blank" href="https://store.setupcase.com/">Store</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" target="_blank" href="https://github.com/undoLogic/setupCase-boilerplate">GitHub</a>
+        <a class="nav-link" target="_blank" href="https://github.com/undoLogic/setupCase-core">GitHub</a>
     </li>
 </ul>

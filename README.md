@@ -3,7 +3,7 @@
 SetupCase is opinionated. Not all feature requests will be accepted. The project roadmap is maintained by undoLogic.
 
 # Get Started
-Login to GitHub - SetupCase-BoilerPlate
+Login to GitHub - SetupCase-Core
 - Click use a template
 
 # Open-Source CORE
@@ -47,7 +47,7 @@ npm uninstall -g @openai/codex
 
 
 
-###  setupCase-boilerPlate Version 4
+###  setupCase-Core Version 4
 SetupCase is an open-source development foundation used to rapidly create structured, maintainable business software.
 It provides a standardized base system, tooling, and workflows that act as building blocks for initializing and scaling CakePHP-based projects in a consistent, repeatable way.
 
@@ -100,7 +100,7 @@ cd ~/www/test
 ```
 Copy/paste these commands to build the source files
 ```angular2html
-wget https://raw.githubusercontent.com/undoLogic/setupCase-boilerplate/main/build/install_setupCase.sh
+wget https://raw.githubusercontent.com/undoLogic/setupCase-core/main/build/install_setupCase.sh
 chmod +x install_setupCase.sh
 ./install_setupCase.sh
 ```
@@ -218,7 +218,7 @@ cd launchPad
 ```
 
 Read the full documentation in the README.md file in the launchPad directory:
-https://github.com/undoLogic/setupCase-boilerplate/tree/main/launchPad
+https://github.com/undoLogic/setupCase-core/blob/main/launchPad_win/README.md
 
 [back to top](#overview-steps)
 
@@ -369,7 +369,7 @@ protected function getAuthenticationService() : AuthenticationService {
 8.1.3. Now add to the same file Application.php add ABOVE the CSRF (sourceFiles\src\Application.php):
 NOTE: You will need to right click and import these classes after you paste
 ```php
-//Added by SetupCase-BoilerPlate
+//Added by SetupCase-Core
 ->add(new EncryptedCookieMiddleware(
     ['CookieAuth'],
     'CHANGEMEWITHSECURE'

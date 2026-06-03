@@ -3,7 +3,7 @@
     "dev": {
       "URL": "codeblocks.undoweb.com",
       "USER": "undoweb",
-      "GIT_ADDRESS": "github.com/undoLogic/setupCase-boilerplate.git",
+      "GIT_ADDRESS": "github.com/undoLogic/setupCase-core.git",
       "USE_PAT": true,
       "ABSOLUTE_PATH": "/home/undoweb/www/codeblocks",
       "COPY_SRC_TO_ROOT": true,

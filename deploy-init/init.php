@@ -12,7 +12,7 @@ if (!is_dir($deployDir)) {
     mkdir($deployDir, 0755, true);
 }
 
-$repo = 'https://github.com/undoLogic/setupCase-boilerplate.git';
+$repo = 'https://github.com/undoLogic/setupCase-core.git';
 //$branch = 'main';
 $branch = 'devJan13';
 

@@ -81,11 +81,11 @@ TESTING_GIT_ADDRESS:
 - PAT = 123456789...
 - This will allow to not include any secrets in these source files
 ```angular2html
-  "TESTING_GIT_ADDRESS": "github.com/undoLogic/setupCase-boilerplate.git",
+  "TESTING_GIT_ADDRESS": "github.com/undoLogic/setupCase-core.git",
 ```
 OR with SSH-KEYS on the server
 ```angular2html
-  "TESTING_GIT_ADDRESS": "git@github.com:undoLogic/setupCase-boilerplate.git",
+  "TESTING_GIT_ADDRESS": "git@github.com:undoLogic/setupCase-core.git",
 ```
 
 TESTING_ABSOLUTE_PATH
@@ -133,11 +133,11 @@ PENDING_GIT_ADDRESS:
 - The PAT will be added to your link when you run this script
 - ensure you have added PAT = 123 on your php.ini file on your server
 ```angular2html
-  "PENDING_GIT_ADDRESS": "https://github.com/undoLogic/setupCase-boilerplate.git",
+  "PENDING_GIT_ADDRESS": "https://github.com/undoLogic/setupCase-core.git",
 ```
 OR with SSH-KEYS on the server
 ```angular2html
-  "PENDING_GIT_ADDRESS": "git@github.com:undoLogic/setupCase-boilerplate.git",
+  "PENDING_GIT_ADDRESS": "git@github.com:undoLogic/setupCase-core.git",
 ```
 
 PENDING_ABSOLUTE_PATH
@@ -207,8 +207,8 @@ Open up a terminal and navigation to the root of your project files (you should 
 # Windows
 mkdir temp
 cd temp
-git clone https://github.com/undoLogic/setupCase-boilerplate.git
-robocopy setupCase-boilerplate/launchPad ../launchPad /MIR
+git clone https://github.com/undoLogic/setupCase-core.git
+robocopy setupCase-core/launchPad ../launchPad /MIR
 ```
 
 =================== OPTIONAL =======================

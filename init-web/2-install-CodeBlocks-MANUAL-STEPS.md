@@ -52,7 +52,7 @@ protected function getAuthenticationService() : AuthenticationService {
 
 
 ```php
-//Added by SetupCase-BoilerPlate
+//Added by SetupCase-Core
 ->add(new EncryptedCookieMiddleware(
     ['CookieAuth'],
     'CHANGEMEWITHSECURE'

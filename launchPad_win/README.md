@@ -8,7 +8,7 @@ Batch files launch POWERSHELL script for LaunchPad
 ### 1. Github Personal Access Token (PAT)
 Using PAT = true
 ```angular2html
-  "TESTING_GIT_ADDRESS": "github.com/undoLogic/setupCase-boilerplate.git",
+  "TESTING_GIT_ADDRESS": "github.com/undoLogic/setupCase-core.git",
 ```
 If you use PAT you must add to your LOCAL Windows computer using Powershell:
 ```powershell
@@ -28,7 +28,7 @@ echo $env:GITHUB_PAT
 ### 2. SSH-Keys
 OR with SSH-KEYS on the server (PAT = false)
 ```angular2html
-  "TESTING_GIT_ADDRESS": "git@github.com:undoLogic/setupCase-boilerplate.git",
+  "TESTING_GIT_ADDRESS": "git@github.com:undoLogic/setupCase-core.git",
 ```
 Then you must setup SSH keys on your server and add the public key to your GitHub account.
 

@@ -1,7 +1,7 @@
 <?php
 
 //DEPRECATED - this has been moved to GitHub Templates
-//https://github.com/undoLogic/setupCase-boilerplate
+//https://github.com/undoLogic/setupCase-core
 //click 'Use This Template'
 //This create a new repo in Github
 
