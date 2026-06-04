@@ -2,12 +2,13 @@
 
 set -e
 
+
 REPO_URL="https://github.com/undoLogic/setupCase-core.git"
 TEMP_DIR="/tmp/setupCase-core-$$"
 
 MODULES=(
     "codeBlocks"
-    "ini-web"
+    "init-web"
     "dockerWSL"
     "launchPad_win"
 )
