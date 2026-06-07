@@ -6,6 +6,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
+      DOCKER_LOCAL_TESTING: true,
       DATABASE_DEFAULT_URL: mysql://root:undologic@db/LIVE_database
       DATABASE_TEST_URL: mysql://root:undologic@db/test_automation
       DATABASE_NAME: local

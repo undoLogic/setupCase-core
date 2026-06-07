@@ -19,13 +19,13 @@
       "POST_COMMANDS": "ls"
     },
     "pending": {
-      "URL": "",
-      "USER": "",
-      "GIT_ADDRESS": "",
+      "URL": "testflight.setupcase.com",
+      "USER": "appsites",
+      "GIT_ADDRESS": "git@setupCaseCore.github.com:undoLogic/setupCase-core.git",
       "USE_PAT": false,
-      "ABSOLUTE_PATH": "",
+      "ABSOLUTE_PATH": "/home/appsites/addons/setupcase.com/testflight",
       "COPY_SRC_TO_ROOT": true,
-      "POST_COMMANDS": ""
+      "POST_COMMANDS": "composer install"
     },
     "LIVE": {
       "URL": "",

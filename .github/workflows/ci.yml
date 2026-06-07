@@ -1,0 +1,178 @@
+name: SetupCase CI v2
+
+on:
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - '.ci_status.json'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve CI branch
+        id: ci_branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "name=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure Git author
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@undologic.com"
+
+      - name: Write pending CI status
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          cat > .ci_status.json <<EOF_JSON
+          {
+            "status": "pending",
+            "timestamp": "$TIMESTAMP",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ steps.ci_branch.outputs.name }}",
+            "environment": "github_actions_docker_wsl",
+            "workflow": "${{ github.workflow }}"
+          }
+          EOF_JSON
+
+      - name: Push pending CI status
+        if: github.event_name == 'push'
+        run: |
+          git add .ci_status.json
+
+          git stash push -m "ci-temp" || true
+          git pull --rebase
+          git stash pop || true
+
+          git add .ci_status.json
+          git commit -m "CI status: pending for ${{ github.sha }}" || echo "No changes"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Start DockerWSL services
+        run: docker compose -f dockerWSL/docker-compose.yml up -d --build
+
+      - name: Wait for database
+        run: |
+          for attempt in $(seq 1 30); do
+            if docker compose -f dockerWSL/docker-compose.yml exec -T db mysqladmin ping -h 127.0.0.1 -uroot -pundologic --silent; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Database did not become ready in time"
+          exit 1
+
+      - name: Prepare test database
+        run: docker compose -f dockerWSL/docker-compose.yml exec -T db mysql -uroot -pundologic -e "CREATE DATABASE IF NOT EXISTS test_automation"
+
+      - name: Fix git safe directory inside container
+        run: docker compose -f dockerWSL/docker-compose.yml exec -T web bash -lc "git config --global --add safe.directory /var/www/vhosts/website.com/www"
+
+      - name: Fix ownership and permissions
+        run: |
+          docker compose -f dockerWSL/docker-compose.yml exec -T web bash -lc "
+          if ! chown -R www-data:www-data /var/www/vhosts/website.com/www; then
+            echo 'Skipping chown; mounted GitHub Actions workspace does not allow ownership changes'
+          fi
+          if ! chmod -R 775 /var/www/vhosts/website.com/www; then
+            echo 'Skipping chmod failures on mounted workspace paths'
+          fi
+          "
+
+      - name: Prepare app_local.php
+        run: |
+          if [ ! -f sourceFiles/config/app_local.php ] && [ -f sourceFiles/config/app_local.example.php ]; then
+            cp sourceFiles/config/app_local.example.php sourceFiles/config/app_local.php
+          fi
+
+      - name: Install dependencies in container
+        run: docker compose -f dockerWSL/docker-compose.yml exec -T -u 0 web bash -lc "cd sourceFiles && composer install --no-interaction --prefer-dist"
+
+      - name: Run PHPUnit in container
+        if: always()
+        run: |
+          set +e
+
+          docker compose -f dockerWSL/docker-compose.yml exec -T web bash -lc "
+            cd sourceFiles && vendor/bin/phpunit --configuration phpunit.xml.dist
+          "
+          TEST_EXIT=$?
+
+          echo "PHPUNIT EXIT CODE: $TEST_EXIT"
+          printf '%s\n' "$TEST_EXIT" > .ci_test_result
+
+          exit 0
+
+      - name: Write final CI status
+        if: always()
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          TEST_EXIT=1
+          if [ -f .ci_test_result ]; then
+            TEST_EXIT=$(cat .ci_test_result)
+          else
+            echo ".ci_test_result was not created; treating workflow as failed before PHPUnit completed"
+          fi
+          echo "Test result: $TEST_EXIT"
+          RESULT="fail"
+          if [ "$TEST_EXIT" = "0" ]; then
+            RESULT="success"
+          fi
+          cat > .ci_status.json <<EOF_JSON
+          {
+            "status": "$RESULT",
+            "timestamp": "$TIMESTAMP",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ steps.ci_branch.outputs.name }}",
+            "environment": "github_actions_docker_wsl",
+            "workflow": "${{ github.workflow }}"
+          }
+          EOF_JSON
+
+      - name: Push final CI status
+        if: always() && github.event_name == 'push'
+        run: |
+          git add .ci_status.json
+
+          git stash push -m "ci-temp" || true
+          git pull --rebase
+          git stash pop || true
+
+          git add .ci_status.json
+          git commit -m "CI status: final for ${{ github.sha }}" || echo "No changes"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Stop DockerWSL services
+        if: always()
+        run: docker compose -f dockerWSL/docker-compose.yml down -v
+
+      - name: Fail workflow if tests failed
+        if: always()
+        run: |
+          if [ ! -f .ci_test_result ]; then
+            echo ".ci_test_result was not created"
+            exit 1
+          fi
+          EXIT_CODE=$(cat .ci_test_result)
+          echo "Final exit code: $EXIT_CODE"
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Tests failed"
+            exit 1
+          fi
+          echo "Tests passed"

@@ -72,6 +72,11 @@ $git = $config.GIT_ADDRESS
 $path = $config.ABSOLUTE_PATH
 $postCommands = $config.POST_COMMANDS
 $usePAT = $config.USE_PAT
+$postCommandSuffix = ""
+
+if (-not [string]::IsNullOrWhiteSpace($postCommands)) {
+    $postCommandSuffix = " &&`n$postCommands"
+}
 
 if ($usePAT -eq $true) {
 
@@ -97,8 +102,7 @@ cd $path &&
 rm -rf * &&
 rm -rf $branch &&
 git clone `"https://\$PAT@$git`" --branch $branch --single-branch $path/$branch &&
-rsync -a --info=progress2,stats --no-perms --omit-dir-times --fake-super $path/$branch/sourceFiles/ . &&
-$postCommands
+rsync -a --info=progress2,stats --no-perms --omit-dir-times --fake-super $path/$branch/sourceFiles/ .$postCommandSuffix
 "@
 
 } else {
@@ -108,8 +112,7 @@ cd $path &&
 rm -rf * &&
 rm -rf $branch &&
 git clone $git --branch $branch --single-branch $path/$branch &&
-rsync -a --info=progress2,stats --no-perms --omit-dir-times --fake-super $path/$branch/sourceFiles/ . &&
-$postCommands
+rsync -a --info=progress2,stats --no-perms --omit-dir-times --fake-super $path/$branch/sourceFiles/ .$postCommandSuffix
 "@
 }
 
@@ -138,15 +141,15 @@ if ($envName -eq "dev" -or $envName -eq "pending") {
     $ciStatusFile = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.ci_status.json"))
     $ciStatus = Get-CiStatusInfo -StatusFilePath $ciStatusFile
 
-    Write-Host "`n--- CI Status ---"
-    if (-not $ciStatus.Exists) {
-        Write-Host ".ci_status.json not found: $($ciStatus.FilePath)"
-    } elseif (-not $ciStatus.IsValid) {
-        Write-Host ".ci_status.json is invalid JSON"
-        Write-Host "error: $($ciStatus.Error)"
-    } else {
-        Write-Host "status: $($ciStatus.Status)"
-        Write-Host "commit: $($ciStatus.Commit)"
-        Write-Host "timestamp: $($ciStatus.Timestamp)"
+    if ($ciStatus.Exists) {
+        Write-Host "`n--- CI Status ---"
+        if (-not $ciStatus.IsValid) {
+            Write-Host ".ci_status.json is invalid JSON"
+            Write-Host "error: $($ciStatus.Error)"
+        } else {
+            Write-Host "status: $($ciStatus.Status)"
+            Write-Host "commit: $($ciStatus.Commit)"
+            Write-Host "timestamp: $($ciStatus.Timestamp)"
+        }
     }
 }
