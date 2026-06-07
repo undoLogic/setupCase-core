@@ -2,4 +2,4 @@
 
 
 
-<img class="img-fluid" src="https://www.setupcase.com/Pages/image/369539"/>
+<img class="img-fluid" src="https://www.setupcase.com/en/Pages/image/403458"/>
