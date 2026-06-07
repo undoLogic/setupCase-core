@@ -1,0 +1,38 @@
+{
+  "environments": {
+    "dev": {
+      "URL": "",
+      "USER": "",
+      "GIT_ADDRESS": "",
+      "USE_PAT": true,
+      "ABSOLUTE_PATH": "",
+      "COPY_SRC_TO_ROOT": true,
+      "POST_COMMANDS": "composer install"
+    },
+    "dev2": {
+      "URL": "",
+      "USER": "",
+      "GIT_ADDRESS": "",
+      "USE_PAT": true,
+      "ABSOLUTE_PATH": "",
+      "COPY_SRC_TO_ROOT": true,
+      "POST_COMMANDS": "ls"
+    },
+    "pending": {
+      "URL": "",
+      "USER": "",
+      "GIT_ADDRESS": "",
+      "USE_PAT": false,
+      "ABSOLUTE_PATH": "",
+      "COPY_SRC_TO_ROOT": true,
+      "POST_COMMANDS": "composer install"
+    },
+    "LIVE": {
+      "URL": "",
+      "USER": "",
+      "ABSOLUTE_PATH": "",
+      "CI_GATE_ENABLED": false,
+      "POST_COMMANDS": "composer install"
+    }
+  }
+}
