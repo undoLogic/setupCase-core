@@ -27,6 +27,19 @@ You can also select an environment directly:
 ./launchPad_linux/prepare.sh pending
 ```
 
+## Create PhpStorm deployment servers
+
+Generate the project deployment configuration from `config.json`:
+
+```bash
+./launchPad_linux/8-phpstorm-init.sh
+```
+
+This creates `.idea/webServers.xml` and `.idea/deployment.xml`. Existing files
+are backed up before replacement. Each environment requires `USER`,
+`ABSOLUTE_PATH`, and either `SFTP_HOST` or `URL`; incomplete environments are
+skipped.
+
 ## CI Deployment Gate
 
 The live deployment ignores `.ci_status.json` unless the gate is explicitly
