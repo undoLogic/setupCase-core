@@ -87,7 +87,7 @@ return function (RouteBuilder $routes): void {
             ['controller' => 'CodeBlocks', 'action' => 'download-csv'],
             ['language' => 'en|fr|es']
         );
-        
+
         // Login and Logout
         $builder->connect('/{language}/login', ['controller' => 'Users', 'action' => 'login']);
         $builder->connect('/{language}/logout', ['controller' => 'Users', 'action' => 'logout']);
@@ -97,7 +97,9 @@ return function (RouteBuilder $routes): void {
         // language
         $builder->connect('/{language}', ['controller' => 'Pages', 'action' => 'home'], ['language' => 'en|fr|es']);
         $builder->connect('/{language}/{controller}/{action}/*', [], ['language' => 'en|fr|es']);
-        $builder->connect('/{language}/{controller}', ['action' => 'index'], ['language' => 'en|fr|es']);        $builder->fallbacks();
+        $builder->connect('/{language}/{controller}', ['action' => 'index'], ['language' => 'en|fr|es']);
+
+        $builder->fallbacks();
     });
     foreach (['Staff', 'Admin', 'Manager'] as $prefix) {
 
