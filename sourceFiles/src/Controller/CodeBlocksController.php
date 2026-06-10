@@ -102,6 +102,15 @@ class CodeBlocksController extends AppController
 
     }
 
+    public function envVars()
+    {
+        $this->set('codeBlocks_title', 'ENV Vars');
+        $this->set(
+            'codeBlocks_subTitle',
+            'Store server-specific values in PHP_SETTINGS and read them with get_cfg_var().'
+        );
+    }
+
 
 
     public function uploadFile() {

@@ -334,11 +334,3 @@ CREATE TABLE `LIVE_database`.`form_attempts` (`id` INT NOT NULL AUTO_INCREMENT ,
 CREATE DATABASE IF NOT EXISTS test_automation;
 
 
-CREATE TABLE `code_blocks` (
-                               `id` int(11) NOT NULL,
-                               `code_block_type_id` int(11) NOT NULL,
-                               `name` varchar(99) NOT NULL,
-                               `description` text NOT NULL,
-                               `created` datetime NOT NULL,
-                               `modified` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

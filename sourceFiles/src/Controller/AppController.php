@@ -125,6 +125,14 @@ class AppController extends Controller
                         ],
                     ],
                     [
+                        'name' => 'ENV Vars',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'envVars',
+                        ],
+                    ],
+                    [
                         'name' => 'Upload File',
                         'link' => [
                             'prefix' => false,
