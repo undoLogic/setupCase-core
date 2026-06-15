@@ -214,6 +214,20 @@ sourceFiles/
 
 ---
 
+# Database Schema Changes
+
+- Record all new database SQL changes in:
+
+```text
+sourceFiles/config/schema/YYYY-MM-DD.sql
+```
+
+- Use the date the change is introduced for the filename.
+- Append related changes to that day's file so the database history remains clear over time.
+- Do not add new SQL changes only to an older consolidated schema file.
+
+---
+
 # Formatting and Cleanup Rules
 
 - Keep ASCII unless Unicode is already required.
