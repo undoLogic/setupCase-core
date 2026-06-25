@@ -321,6 +321,48 @@ Verify:
 
 ---
 
+## Integration Test Tracking
+
+- This project tracks integration test coverage in `docs/Intergration_testing.md`.
+- When starting test-related work, check whether that file exists.
+- If it does not exist, prompt the user to create it before writing new tests.
+- Each scenario in the file should be linked to a real test via its `STATUS` field once covered.
+- If the user agrees to create it, scaffold it with this content:
+
+````
+# Intergration testing
+
+This file is the source of truth for which integration tests must stay active in `sourceFiles/tests/`.
+Each `##` row describes one scenario and the test method that proves it. When you add a row, Claude
+(or whoever picks this up) should either find the matching test and link it via `STATUS`, or write it.
+
+## Row template
+
+Copy this block for every new scenario. `LAYER` and the second `STEPS` line are optional — everything
+else is the minimum needed to write or verify the test without guessing.
+
+```
+## <Title — also becomes the test method name, e.g. "Ensure Foo Works" -> testEnsureFooWorks>
+<1-3 sentences of business context, optional>
+
+LAYER: Table                  <- omit if Table-level (default). Set to "Controller" only if this
+                                  genuinely needs a real HTTP request/response cycle.
+DATA: <fixtures / preconditions the test must set up>
+WHAT_TO_TEST: <the function, method, or URL surface being exercised>
+STEPS:
+  1. <action> -> EXPECT: <assertion>
+  2. <action> -> EXPECT: <assertion>
+STATUS: ❌ missing                 <- or: ✅ covered — <path/to/Test.php>::<testMethodName>
+```
+
+Use a single `STEPS` line when there's only one action/assertion. Use a numbered list when the
+scenario has multiple phases (e.g. "before the record exists" vs "after").
+
+---
+````
+
+---
+
 # Git and Change Hygiene
 
 - Never revert unrelated user changes
