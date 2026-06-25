@@ -20,6 +20,7 @@ namespace App\Controller\Admin;
 use App\Controller\AppController;
 
 use Cake\Core\Configure;
+use Cake\Datasource\ConnectionManager;
 use Cake\Datasource\FactoryLocator;
 use Cake\Http\Exception\ForbiddenException;
 use Cake\Http\Exception\NotFoundException;
@@ -61,5 +62,71 @@ class SetupPagesController extends AppController
 
         $logs = $this->ActivityLogs->find('all')->order('id DESC')->limit(10);
         $this->set('logs', $logs);
+    }
+
+    public function downloadBackup(): ?Response
+    {
+
+        die('Manually choose tables to exclude then enable');
+        // Tables above: dump schema only, skip the (large/sensitive) row data
+        $schemaOnlyTables = [
+            //'users',
+        ];
+
+        $config = ConnectionManager::get('default')->config();
+
+        $host = $config['host'];
+        $port = $config['port'] ?? '3306';
+        $username = $config['username'];
+        $password = $config['password'];
+        $database = $config['database'];
+
+        $file = TMP . 'dump_' . date('Y-m-d_H-i-s') . '.sql';
+
+        $ignoreTableArgs = '';
+        foreach ($schemaOnlyTables as $table) {
+            $ignoreTableArgs .= ' --ignore-table=' . escapeshellarg($database . '.' . $table);
+        }
+
+        // Pass 1: full schema + data for every table EXCEPT the schema-only ones
+        $dataCommand = sprintf(
+            'mysqldump --user=%s --password=%s --host=%s --port=%s%s %s > %s',
+            escapeshellarg($username),
+            escapeshellarg($password),
+            escapeshellarg($host),
+            escapeshellarg($port),
+            $ignoreTableArgs,
+            escapeshellarg($database),
+            escapeshellarg($file)
+        );
+
+        exec($dataCommand, $output, $dataReturnVar);
+
+        // Pass 2: schema only (--no-data) for the tables above, appended to the same file
+        $schemaOnlyTableArgs = implode(' ', array_map('escapeshellarg', $schemaOnlyTables));
+
+        $schemaCommand = sprintf(
+            'mysqldump --user=%s --password=%s --host=%s --port=%s --no-data %s %s >> %s',
+            escapeshellarg($username),
+            escapeshellarg($password),
+            escapeshellarg($host),
+            escapeshellarg($port),
+            escapeshellarg($database),
+            $schemaOnlyTableArgs,
+            escapeshellarg($file)
+        );
+
+        exec($schemaCommand, $output, $schemaReturnVar);
+
+        if ($dataReturnVar === 0 && $schemaReturnVar === 0) {
+            $this->response = $this->response->withFile($file, [
+                'download' => true,
+                'name' => basename($file),
+            ]);
+
+            return $this->response;
+        }
+
+        die('Could not create dump file');
     }
 }
