@@ -53,15 +53,13 @@ Hosting provider
 - `sourceFiles/webroot/cron.php`
 - `sourceFiles/config/cron.php`
 - `sourceFiles/src/Service/CronService.php`
-- `sourceFiles/tests/TestCase/Service/CronServiceTest.php`
-- Optional fixture/helper test classes only if needed to exercise callable jobs safely.
 
 ## Hosting Contract
 
 Hosting calls one URL:
 
 ```text
-https://example.com/cron.php?action=run_all&token=<execution-token>
+https://example.com/cron.php?action=run_all
 ```
 
 Adding a new scheduled operation requires code/config changes only:
@@ -79,15 +77,15 @@ All endpoint actions are passed through query parameters because the physical fi
 | Request | Access | Behavior |
 | --- | --- | --- |
 | `/cron.php?action=status` | Public by default | Return JSON monitoring status. |
-| `/cron.php?action=run_all&token=<token>` | Protected | Evaluate every enabled job and execute jobs that are due. |
-| `/cron.php?action=run&job=<job_key>&token=<token>` | Protected | Execute one enabled job immediately. |
+| `/cron.php?action=run_all` | Protected | Evaluate every enabled job and execute jobs that are due. |
+| `/cron.php?action=run&job=<job_key>` | Protected | Execute one enabled job immediately. |
 | `/cron.php` | Public | Return `404` with no body. |
 | Unknown action | Public | Return `404` with no body. |
-| Invalid token/IP for execution | Protected | Return `404` with no body. |
+| Invalid IP for execution | Protected | Return `404` with no body. |
 | Unknown job key | Protected | Return `404` with no body. |
 | Disabled job requested directly | Protected | Return `404` with no body. |
 
-The endpoint must not echo stack traces, config paths, job method names, or token details.
+The endpoint must not echo stack traces, config paths, or job method names.
 
 ## HTTP Response Rules
 
@@ -132,7 +130,6 @@ return [
         'allowed_ips' => [
             '127.0.0.1',
         ],
-        'execution_token' => env('CRON_EXECUTION_TOKEN'),
     ],
     'jobs' => [
         'email_queue' => [
@@ -157,8 +154,7 @@ return [
 ### Optional Global Keys
 
 - `status_path`: directory for heartbeat files. Default: `sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'setupcase-cron'`.
-- `security.allowed_ips`: allowed execution request IPs. Empty or omitted means token-only execution.
-- `security.execution_token`: token required for execution. If omitted or blank, execution must be disabled except in CLI/unit-test contexts explicitly chosen by implementation.
+- `security.allowed_ips`: allowed execution request IPs. Empty or omitted must disable execution.
 
 ### Job Keys
 
@@ -311,7 +307,7 @@ Example:
 }
 ```
 
-Do not include execution tokens, full private paths, or raw exception traces.
+Do not include full private paths or raw exception traces.
 
 ## Execution JSON Contract
 
@@ -383,35 +379,31 @@ Keep `sourceFiles/webroot/cron.php` small. It should bootstrap CakePHP, instanti
 
 Execution is protected by:
 
-- Token check through `CRON_EXECUTION_TOKEN`.
-- Optional IP allowlist.
+- IP allowlist.
 
 Security rules:
 
 - Status is public by default because external monitoring needs unauthenticated deployment checks.
-- Execution must fail closed when `CRON_EXECUTION_TOKEN` is missing.
-- Compare tokens with `hash_equals`.
-- Read token from query string for shared-hosting compatibility.
-- Do not log or return the submitted token.
+- Execution must fail closed when `security.allowed_ips` is missing or empty.
+- Check the request IP against `security.allowed_ips`.
+- Use the server-provided remote address by default.
+- Do not trust forwarded IP headers unless proxy handling is explicitly configured later.
 - Return the same `404` empty response for unauthorized and unknown execution requests.
 
-## Testing Plan
+## MVP Verification
 
-Before writing tests, check whether `docs/Intergration_testing.md` exists. It is currently absent in this repository, so test-related implementation work should either ask to scaffold it or avoid adding new scenario rows until it exists.
+Do not add automated tests for the MVP.
 
-Suggested tests:
+Manual verification should cover:
 
-- Config defaulting uses a temp `setupcase-cron` status directory when `status_path` is omitted.
-- Invalid job keys are rejected.
-- `status` marks enabled monitored jobs without heartbeat files as unhealthy.
-- Fresh heartbeat files are healthy.
-- Stale heartbeat files are unhealthy.
-- Disabled jobs are listed but do not count as failed.
-- Successful job execution writes a heartbeat.
-- Failed job execution does not overwrite an existing heartbeat.
-- `run_all` executes remaining due jobs after one failure.
-- Missing execution token disables execution.
-- Wrong token and unknown action return silent `404`.
+- `cron.php?action=status` returns JSON.
+- `cron.php?action=run_all` executes only from an allowed IP.
+- `cron.php?action=run&job=<job_key>` executes only from an allowed IP.
+- Requests from a disallowed IP return `404` with no body.
+- Missing, unknown, or disabled jobs return `404` with no body.
+- Successful execution writes or updates the heartbeat file.
+- Failed execution does not overwrite an existing heartbeat.
+- Stale heartbeat files are reported as unhealthy.
 
 ## Implementation Phases
 
@@ -420,9 +412,8 @@ Suggested tests:
 - Add `sourceFiles/config/cron.php` with no enabled project jobs by default.
 - Add `App\Service\CronService`.
 - Add `sourceFiles/webroot/cron.php`.
-- Add focused service tests.
 - Verify PHP syntax with `php -l`.
-- Run the focused PHPUnit test file.
+- Manually verify the MVP endpoint behavior.
 
 ### Phase 2: First Real Job
 
@@ -435,7 +426,7 @@ Suggested tests:
 
 - Point external monitoring at `https://client.com/cron.php?action=status`.
 - Define alert thresholds around top-level `healthy`.
-- Keep execution endpoints token/IP protected.
+- Keep execution endpoints IP protected.
 
 ### Phase 4: Administration UI
 
