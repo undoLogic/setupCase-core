@@ -31,14 +31,6 @@ class CronService
         $this->statusPath = $this->config['status_path'];
     }
 
-    public function isExecutionAllowed(?string $remoteIp): bool
-    {
-        $allowedIps = $this->config['security']['allowed_ips'] ?? [];
-        $allowedIps = array_values(array_filter(array_map('trim', array_map('strval', $allowedIps))));
-
-        return $remoteIp !== null && $allowedIps !== [] && in_array(trim($remoteIp), $allowedIps, true);
-    }
-
     public function run(string $jobKey): array
     {
         if (!$this->canRunJob($jobKey)) {
@@ -87,16 +79,11 @@ class CronService
     {
         $config += [
             'status_path' => sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'setupcase-cron',
-            'security' => [],
             'jobs' => [],
         ];
         $config['status_path'] = is_string($config['status_path']) && $config['status_path'] !== ''
             ? $config['status_path']
             : sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'setupcase-cron';
-        $config['security'] = is_array($config['security']) ? $config['security'] : [];
-        $config['security'] += [
-            'allowed_ips' => [],
-        ];
         $config['jobs'] = $this->normalizeConfig_jobs($config['jobs']);
 
         return $config;
@@ -233,14 +220,14 @@ class CronService
 
     private function status_buildJobStatus(string $jobKey, array $job): array
     {
-        $status = $this->status_baseJobStatus($job);
+        $status = $this->status_baseJobStatus($jobKey, $job);
         if (!$this->isValidJobKey($jobKey)) {
             return $status + [
-                'healthy' => false,
-                'last_success' => null,
-                'age_seconds' => null,
-                'MSG' => 'Invalid cron job key.',
-            ];
+                    'healthy' => false,
+                    'last_success' => null,
+                    'age_seconds' => null,
+                    'MSG' => 'Invalid cron job key.',
+                ];
         }
         if (!$this->jobIsEnabled($job) || empty($job['monitor'])) {
             return $status + ['healthy' => null, 'last_success' => null, 'age_seconds' => null];
@@ -249,10 +236,11 @@ class CronService
         return $status + $this->status_heartbeatStatus($jobKey, $job);
     }
 
-    private function status_baseJobStatus(array $job): array
+    private function status_baseJobStatus(string $jobKey, array $job): array
     {
         return [
             'enabled' => $this->jobIsEnabled($job),
+            'command' => $this->status_jobCommand($jobKey),
             'description' => (string)($job['description'] ?? ''),
             'schedule' => (string)($job['schedule'] ?? ''),
             'max_age' => (int)($job['max_age'] ?? 0),
@@ -281,18 +269,51 @@ class CronService
         $enabledJobs = array_filter($jobs, static fn(array $job): bool => $job['enabled']);
         $monitoredJobs = array_filter($jobs, static fn(array $job): bool => $job['enabled'] && $job['monitor']);
         $healthyJobs = array_filter($monitoredJobs, static fn(array $job): bool => $job['healthy'] === true);
+        $failedJobKeys = array_keys(array_filter($monitoredJobs, static fn(array $job): bool => $job['healthy'] !== true));
         $failedJobs = count($monitoredJobs) - count($healthyJobs);
 
         return [
-            'generated_at' => $this->generatedAt->format(DateTimeInterface::ATOM),
+            'STATUS' => $failedJobs === 0 ? 200 : 500,
+            'MSG' => $failedJobs === 0 ? 'Cron jobs healthy' : 'Cron jobs unhealthy',
             'healthy' => $failedJobs === 0,
+            'failed_jobs' => $failedJobs,
+            'failed_jobs_text' => implode(', ', $failedJobKeys),
+            'generated_at' => $this->generatedAt->format(DateTimeInterface::ATOM),
+            'status_path' => $this->statusPath,
+            'available_commands' => $this->status_availableCommands($jobs),
             'total_jobs' => count($jobs),
             'enabled_jobs' => count($enabledJobs),
             'monitored_jobs' => count($monitoredJobs),
             'healthy_jobs' => count($healthyJobs),
-            'failed_jobs' => $failedJobs,
             'jobs' => $jobs,
         ];
+    }
+
+    private function status_availableCommands(array $jobs): array
+    {
+        return [
+            'status' => './bin/cake cron status',
+            //'note' => 'Use one command per server cron entry when scheduling jobs separately.',
+            'run_all' => $this->status_separateJobCommands($jobs),
+        ];
+    }
+
+    private function status_separateJobCommands(array $jobs): array
+    {
+        $commands = [];
+        foreach ($jobs as $jobKey => $job) {
+            $commands[$jobKey] = [
+                'enabled' => !empty($job['enabled']),
+                'command' => $this->status_jobCommand((string)$jobKey),
+            ];
+        }
+
+        return $commands;
+    }
+
+    private function status_jobCommand(string $jobKey): string
+    {
+        return './bin/cake cron run ' . $jobKey;
     }
 
     private function writeHeartbeat(string $jobKey): bool
