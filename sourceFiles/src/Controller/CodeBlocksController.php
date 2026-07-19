@@ -109,6 +109,15 @@ class CodeBlocksController extends AppController
             'codeBlocks_subTitle',
             'MVP setup for project cron jobs using IP-restricted cron.php and public Table methods.'
         );
+
+
+        $this->set('codeBlocks_renderFiles', [
+            'Project config' => APP . '../config/cron.php',
+            'Service' => APP . 'Service/CronService.php',
+        ]);
+        $this->set('codeBlocks_renderVar', [
+            //'2. Table method' => SetupCase::extractFunction(\App\Controller\CodeBlocksController::class, 'associations')
+        ]);
     }
 
     public function envVars()

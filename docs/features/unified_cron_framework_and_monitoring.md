@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning. This file is the implementation contract to verify before programming starts.
+MVP implemented. The first pass includes `config/cron.php`, `App\Service\CronService`, and `webroot/cron.php`.
 
 ## Summary
 
