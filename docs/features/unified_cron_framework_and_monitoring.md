@@ -22,7 +22,8 @@ Move cron definitions out of hosting control panels and into SetupCase Core. Eac
 
 - No visual administration UI in the first pass.
 - No database-backed execution history in the first pass.
-- No cron-expression parser in the first pass.
+- No application-level interval scheduler in the first pass.
+- No timeout enforcement in the first pass.
 - No retry queue, notifications, Slack/Teams alerts, or distributed dashboard in the first pass.
 - No attempt to edit hosting-provider cron settings from the application.
 
@@ -32,7 +33,7 @@ Move cron definitions out of hosting control panels and into SetupCase Core. Eac
 - There is no existing cron framework in `sourceFiles/src`.
 - `sourceFiles/webroot/modules` is treated as vendor/original assets and must not be edited for this feature.
 - New source should live under `sourceFiles/`.
-- Public `Table` methods must return response arrays with at least `STATUS` and `MSG`. This feature is better suited to a service class, so that Table response-array rule should not force the cron service API unless a Table method is added later.
+- Public `Table` methods must return response arrays with at least `STATUS` and `MSG`. Cron jobs should call those Table/model methods directly for the MVP.
 
 ## Architecture
 
@@ -42,7 +43,7 @@ Hosting provider
         -> CakePHP bootstrap
             -> App\Service\CronService
                 -> sourceFiles/config/cron.php
-                    -> registered callable jobs
+                    -> registered model actions
                         -> heartbeat status files
 ```
 
@@ -65,7 +66,7 @@ https://example.com/cron.php?action=run_all
 Adding a new scheduled operation requires code/config changes only:
 
 1. Add a job entry to `sourceFiles/config/cron.php`.
-2. Implement the callable target.
+2. Implement the public Table/model method.
 3. Deploy.
 
 No new hosting cron entry should be required.
@@ -77,7 +78,7 @@ All endpoint actions are passed through query parameters because the physical fi
 | Request | Access | Behavior |
 | --- | --- | --- |
 | `/cron.php?action=status` | Public by default | Return JSON monitoring status. |
-| `/cron.php?action=run_all` | Protected | Evaluate every enabled job and execute jobs that are due. |
+| `/cron.php?action=run_all` | Protected | Execute every enabled job. |
 | `/cron.php?action=run&job=<job_key>` | Protected | Execute one enabled job immediately. |
 | `/cron.php` | Public | Return `404` with no body. |
 | Unknown action | Public | Return `404` with no body. |
@@ -96,18 +97,16 @@ The endpoint must not echo stack traces, config paths, or job method names.
 - Unauthorized, unknown, malformed, or empty requests return `404` and an empty body.
 - Job failures inside an authorized `run` or `run_all` response are reported in JSON, not by leaking a PHP fatal page.
 
-## Scheduling Contract
+## MVP Scheduling Scope
 
-Hosting should call `run_all` at the smallest cadence any project job needs, usually once per minute. `CronService` should decide which enabled jobs are due.
+Hosting controls the cadence for the MVP.
 
-First-pass scheduling uses a simple numeric interval instead of parsing cron expressions:
+Rules:
 
-- `interval` is the minimum number of seconds between successful `run_all` executions for a job.
-- Missing or `0` interval means the job runs every time `run_all` is called.
-- A job with no heartbeat is due immediately.
-- A job with a heartbeat is due when `generated_at - last_success >= interval`.
-- A failed job does not update the heartbeat, so it will be retried on the next `run_all`.
+- `run_all` executes every enabled job every time hosting calls it.
 - `run&job=<job_key>` is a manual override and executes immediately when authorized.
+- Each job should be safe to run at the hosting cadence chosen for the project.
+- Different job cadences can be added later through an application-level scheduler if needed.
 
 `schedule` remains a human-readable label for monitoring and administration screens. Code should not parse `schedule`.
 
@@ -134,13 +133,11 @@ return [
     'jobs' => [
         'email_queue' => [
             'enabled' => true,
-            'service' => App\Service\ProjectCronJobsService::class,
-            'method' => 'processEmailQueue',
+            'model' => 'EmailQueues',
+            'action' => 'processEmailQueue',
             'description' => 'Process queued emails.',
             'schedule' => 'every minute',
-            'interval' => 60,
             'max_age' => 120,
-            'timeout' => 300,
             'monitor' => true,
         ],
     ],
@@ -186,8 +183,8 @@ email_queue -> email_queue.status
 ### Required Job Keys
 
 - `enabled`: boolean.
-- `service`: fully qualified service class name.
-- `method`: public method to call on the service.
+- `model`: CakePHP Table alias, for example `EmailQueues`.
+- `action`: public method to call on the Table instance.
 - `description`: short human-readable description.
 - `schedule`: human-readable expected hosting cadence.
 - `max_age`: seconds before the last successful heartbeat is considered stale.
@@ -195,29 +192,43 @@ email_queue -> email_queue.status
 
 ### Optional Job Keys
 
-- `interval`: minimum seconds between successful `run_all` executions. Default: `0`.
-- `timeout`: expected max runtime in seconds. The first implementation records this in status output but does not need to enforce process termination.
+None for the MVP.
 
-## Callable Job Contract
+## Model Action Contract
 
-Each job should be a public method on a service class.
+Each job should point to a public method on a CakePHP Table/model class. In `sourceFiles/config/cron.php`, `action` means the Table method name, not a controller action.
+
+Example config target:
+
+```php
+'model' => 'EmailQueues',
+'action' => 'processEmailQueue',
+```
+
+Example Table method:
 
 Preferred successful response:
 
 ```php
-[
-    'STATUS' => 200,
-    'MSG' => 'Processed email queue',
-]
+public function processEmailQueue(): array
+{
+    return [
+        'STATUS' => 200,
+        'MSG' => 'Processed email queue',
+    ];
+}
 ```
 
 Preferred failed response:
 
 ```php
-[
-    'STATUS' => 500,
-    'MSG' => 'Email queue failed',
-]
+public function processEmailQueue(): array
+{
+    return [
+        'STATUS' => 500,
+        'MSG' => 'Email queue failed',
+    ];
+}
 ```
 
 Rules:
@@ -225,6 +236,18 @@ Rules:
 - `STATUS` in the `200` range means success and writes a heartbeat.
 - Any missing, non-array, or non-`200` range response means failure and does not write a success heartbeat.
 - Exceptions are caught by `CronService`, returned as failed job results, and must not expose sensitive exception text through the public endpoint when `debug` is false.
+
+## Admin Testing Flow
+
+The intended project workflow is:
+
+1. Add a public method to the relevant Table/model.
+2. Connect an admin-prefix controller action or button to that same Table method.
+3. Manually run it through the admin UI until the behavior is confirmed.
+4. Register the same model/action pair in `sourceFiles/config/cron.php`.
+5. Let `cron.php?action=run_all` call the Table method directly.
+
+Cron must not call the admin URL. The admin route and cron framework should share the same Table method so business logic lives in one place.
 
 ## Heartbeat Files
 
@@ -269,8 +292,6 @@ A monitored job is unhealthy when:
 
 Disabled jobs appear in the response but do not count as failed.
 
-Monitoring uses `max_age`. Scheduling uses `interval`. Keep both values explicit because alert thresholds and execution cadence are related but not always identical.
-
 Top-level health:
 
 ```text
@@ -295,9 +316,7 @@ Example:
       "enabled": true,
       "description": "Process queued emails.",
       "schedule": "every minute",
-      "interval": 60,
       "max_age": 120,
-      "timeout": 300,
       "monitor": true,
       "healthy": true,
       "last_success": "2026-07-19T11:41:00-04:00",
@@ -335,11 +354,9 @@ Do not include full private paths or raw exception traces.
   "STATUS": 200,
   "MSG": "Execution loop completed",
   "total_jobs": 2,
-  "due_jobs": 1,
-  "executed_jobs": 1,
-  "skipped_jobs": 1,
+  "executed_jobs": 2,
   "successful_jobs": 1,
-  "failed_jobs": 0,
+  "failed_jobs": 1,
   "jobs": {
     "email_queue": {
       "STATUS": 200,
@@ -347,15 +364,15 @@ Do not include full private paths or raw exception traces.
       "heartbeat_written": true
     },
     "cleanup_tmp": {
-      "STATUS": 204,
-      "MSG": "Not due",
+      "STATUS": 500,
+      "MSG": "Cleanup failed",
       "heartbeat_written": false
     }
   }
 }
 ```
 
-`run_all` should keep executing remaining due jobs after one job fails.
+`run_all` should keep executing remaining enabled jobs after one job fails.
 
 ## `CronService` Responsibilities
 
@@ -364,10 +381,11 @@ Do not include full private paths or raw exception traces.
 - Load and validate `sourceFiles/config/cron.php`.
 - Normalize defaults.
 - Validate job keys.
+- Resolve configured `model` aliases through CakePHP's Table locator.
+- Validate configured `action` methods are callable on the resolved Table.
 - Authorize execution requests.
-- Decide whether enabled jobs are due for `run_all`.
 - Execute one enabled job.
-- Execute all due enabled jobs.
+- Execute all enabled jobs.
 - Catch job exceptions.
 - Write heartbeat files after successful job runs.
 - Generate monitoring status.
@@ -418,7 +436,8 @@ Manual verification should cover:
 ### Phase 2: First Real Job
 
 - Register the first real project cron job.
-- Implement the job service method.
+- Implement the Table/model method.
+- Wire an admin-prefix action to the same Table/model method for manual testing.
 - Confirm `run` and `run_all` write heartbeats.
 - Confirm `status` reports health from the heartbeat.
 
@@ -443,7 +462,9 @@ Manual verification should cover:
 - Notification rules.
 - Centralized dashboard.
 - Scheduled health reports.
-- Internal due-job scheduler.
+- Application-level cadence scheduler.
+- Timeout tracking and enforcement.
+- Optional non-Table service targets if a future job does not fit a model/table boundary.
 
 ## Guiding Principle
 
