@@ -102,6 +102,15 @@ class CodeBlocksController extends AppController
 
     }
 
+    public function unifiedCronFrameworkAndMonitoring()
+    {
+        $this->set('codeBlocks_title', 'Unified Cron Framework And Monitoring');
+        $this->set(
+            'codeBlocks_subTitle',
+            'MVP setup for project cron jobs using IP-restricted cron.php and public Table methods.'
+        );
+    }
+
     public function envVars()
     {
         $this->set('codeBlocks_title', 'ENV Vars');

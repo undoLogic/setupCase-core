@@ -125,6 +125,14 @@ class AppController extends Controller
                         ],
                     ],
                     [
+                        'name' => 'Unified Cron Framework',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'unifiedCronFrameworkAndMonitoring',
+                        ],
+                    ],
+                    [
                         'name' => 'ENV Vars',
                         'link' => [
                             'prefix' => false,
