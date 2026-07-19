@@ -1,708 +1,459 @@
-# SetupCase Core
-# Unified Cron Framework & Monitoring
+# Feature: Unified Cron Framework And Monitoring
 
-**Status:** Planning
+## Status
 
----
+Planning. This file is the implementation contract to verify before programming starts.
 
-# Vision
+## Summary
 
-Transform cron jobs from a hosting concern into a first-class SetupCase Core feature.
+Move cron definitions out of hosting control panels and into SetupCase Core. Each installation keeps one permanent physical cron entry point at `sourceFiles/webroot/cron.php`; hosting only calls that file. The application loads `sourceFiles/config/cron.php`, executes registered jobs, writes heartbeat status files outside the deployed source tree, and exposes a minimal status response for monitoring.
 
-Instead of the hosting provider defining scheduled operations, the application itself becomes the **single source of truth**.
+## Goals
 
-The hosting provider simply invokes the framework.
+- Use one permanent hosting cron target for every SetupCase project.
+- Make `sourceFiles/config/cron.php` the source of truth for scheduled operations.
+- Add deterministic job registration, execution, and monitoring contracts.
+- Keep hosting changes unnecessary when a project adds or removes jobs.
+- Store heartbeat files somewhere deployment-safe.
+- Let external monitoring verify that the physical cron file, CakePHP bootstrap, config loading, and heartbeat reads all work.
+- Keep the first implementation simple enough to ship without a database migration.
 
-The framework decides:
+## Non-Goals
 
-- what jobs exist
-- what jobs are enabled
-- how to execute them
-- how to monitor them
-- when they last executed successfully
+- No visual administration UI in the first pass.
+- No database-backed execution history in the first pass.
+- No cron-expression parser in the first pass.
+- No retry queue, notifications, Slack/Teams alerts, or distributed dashboard in the first pass.
+- No attempt to edit hosting-provider cron settings from the application.
 
-This creates deterministic infrastructure that is portable across every SetupCase project.
+## Existing Context
 
----
+- The app is CakePHP 4.5 and currently uses `sourceFiles/webroot/index.php` as the normal front controller.
+- There is no existing cron framework in `sourceFiles/src`.
+- `sourceFiles/webroot/modules` is treated as vendor/original assets and must not be edited for this feature.
+- New source should live under `sourceFiles/`.
+- Public `Table` methods must return response arrays with at least `STATUS` and `MSG`. This feature is better suited to a service class, so that Table response-array rule should not force the cron service API unless a Table method is added later.
 
-# Current Problems
+## Architecture
 
-Today:
-
-- Cron jobs exist outside the application.
-- Hosting configuration becomes the source of truth.
-- Developers must remember every cron job manually.
-- No centralized monitoring.
-- Deployments can accidentally remove cron files.
-- Difficult to determine expected scheduled operations.
-
----
-
-# Goals
-
-- One permanent cron endpoint.
-- One configuration file.
-- Self-documenting scheduled operations.
-- Deployment-safe monitoring.
-- Centralized monitoring support.
-- Zero hosting changes when new jobs are added.
-- Future-proof enterprise architecture.
-
----
-
-# High Level Architecture
-
-```
-Hosting Provider
-        │
-        ▼
-webroot/cron.php
-        │
-        ▼
-CronService
-        │
-        ▼
-config/cron.php
-        │
-        ▼
-Registered Jobs
-        │
-        ▼
-Heartbeat (.status files)
+```text
+Hosting provider
+    -> sourceFiles/webroot/cron.php
+        -> CakePHP bootstrap
+            -> App\Service\CronService
+                -> sourceFiles/config/cron.php
+                    -> registered callable jobs
+                        -> heartbeat status files
 ```
 
----
+`cron.php` is deliberately physical because many shared hosting providers need a real PHP file as the scheduled target. Monitoring must use the same file so a broken physical endpoint, bootstrap failure, or missing config is visible.
 
-# Physical Entry Point
+## Files To Add
 
-Every SetupCase installation includes one permanent file:
+- `sourceFiles/webroot/cron.php`
+- `sourceFiles/config/cron.php`
+- `sourceFiles/src/Service/CronService.php`
+- `sourceFiles/tests/TestCase/Service/CronServiceTest.php`
+- Optional fixture/helper test classes only if needed to exercise callable jobs safely.
 
-```
-/webroot/cron.php
-```
+## Hosting Contract
 
-This exists because many shared hosting providers require a **physical PHP file** as the cron target.
+Hosting calls one URL:
 
-The hosting provider always executes this file.
-
-Example:
-
-```
-https://example.com/cron.php?action=run_all
+```text
+https://example.com/cron.php?action=run_all&token=<execution-token>
 ```
 
-This file becomes part of SetupCase Core.
+Adding a new scheduled operation requires code/config changes only:
 
-It should rarely (if ever) require modification.
+1. Add a job entry to `sourceFiles/config/cron.php`.
+2. Implement the callable target.
+3. Deploy.
 
----
+No new hosting cron entry should be required.
 
-# Why Everything Uses cron.php
+## Endpoint Contract
 
-Even monitoring.
+All endpoint actions are passed through query parameters because the physical file is not a Cake route.
 
-The monitoring server should verify the complete execution chain.
+| Request | Access | Behavior |
+| --- | --- | --- |
+| `/cron.php?action=status` | Public by default | Return JSON monitoring status. |
+| `/cron.php?action=run_all&token=<token>` | Protected | Evaluate every enabled job and execute jobs that are due. |
+| `/cron.php?action=run&job=<job_key>&token=<token>` | Protected | Execute one enabled job immediately. |
+| `/cron.php` | Public | Return `404` with no body. |
+| Unknown action | Public | Return `404` with no body. |
+| Invalid token/IP for execution | Protected | Return `404` with no body. |
+| Unknown job key | Protected | Return `404` with no body. |
+| Disabled job requested directly | Protected | Return `404` with no body. |
 
-```
-External Monitoring
+The endpoint must not echo stack traces, config paths, job method names, or token details.
 
-        │
+## HTTP Response Rules
 
-HTTP Request
+- `status` returns `200` when the framework can inspect configured jobs, even if one or more jobs are unhealthy.
+- `status` returns JSON with `Content-Type: application/json`.
+- `run_all` returns `200` JSON when the request is authorized and the framework completed the execution loop.
+- `run` returns `200` JSON when the request is authorized and the requested job was executed.
+- Unauthorized, unknown, malformed, or empty requests return `404` and an empty body.
+- Job failures inside an authorized `run` or `run_all` response are reported in JSON, not by leaking a PHP fatal page.
 
-        │
+## Scheduling Contract
 
-webroot/cron.php exists
+Hosting should call `run_all` at the smallest cadence any project job needs, usually once per minute. `CronService` should decide which enabled jobs are due.
 
-        │
+First-pass scheduling uses a simple numeric interval instead of parsing cron expressions:
 
-CakePHP bootstraps
+- `interval` is the minimum number of seconds between successful `run_all` executions for a job.
+- Missing or `0` interval means the job runs every time `run_all` is called.
+- A job with no heartbeat is due immediately.
+- A job with a heartbeat is due when `generated_at - last_success >= interval`.
+- A failed job does not update the heartbeat, so it will be retried on the next `run_all`.
+- `run&job=<job_key>` is a manual override and executes immediately when authorized.
 
-        │
+`schedule` remains a human-readable label for monitoring and administration screens. Code should not parse `schedule`.
 
-CronService loads
+## Configuration Contract
 
-        │
+Path:
 
-config/cron.php loads
-
-        │
-
-Heartbeat files readable
-
-        │
-
-Status returned
-```
-
-If monitoring used another endpoint, the physical cron infrastructure could silently break without detection.
-
-Using the same endpoint guarantees the deployed cron infrastructure itself is healthy.
-
----
-
-# Endpoint Actions
-
-```
-?action=status
-```
-
-Return monitoring information.
-
----
-
-```
-?action=run_all
-```
-
-Execute every enabled scheduled operation.
-
----
-
-```
-?action=run&job=email_queue
-```
-
-Execute one scheduled operation.
-
----
-
-No action:
-
-```
-/cron.php
-```
-
-Returns:
-
-```
-404
-```
-
-No body.
-
-No implementation details.
-
----
-
-Unknown actions:
-
-Return:
-
-```
-404
-```
-
-No body.
-
----
-
-# Configuration
-
-Every SetupCase project edits one file:
-
-```
-config/cron.php
+```text
+sourceFiles/config/cron.php
 ```
 
 Example:
 
 ```php
+<?php
+
 return [
-
-    /*
-     * Global location for heartbeat files.
-     *
-     * If omitted, SetupCase automatically uses:
-     *
-     * sys_get_temp_dir()
-     */
-
-    'status_path' => '/home/projectName/private/cronjobs',
-
-    /*
-     * Execution security.
-     */
-
+    'status_path' => env('CRON_STATUS_PATH') ?: sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'setupcase-cron',
     'security' => [
-
         'allowed_ips' => [
-
             '127.0.0.1',
-
         ],
-
         'execution_token' => env('CRON_EXECUTION_TOKEN'),
-
     ],
-
-    /*
-     * Registered scheduled operations.
-     */
-
     'jobs' => [
-
         'email_queue' => [
-
             'enabled' => true,
-
+            'service' => App\Service\ProjectCronJobsService::class,
             'method' => 'processEmailQueue',
-
             'description' => 'Process queued emails.',
-
             'schedule' => 'every minute',
-
+            'interval' => 60,
+            'max_age' => 120,
             'timeout' => 300,
-
             'monitor' => true,
-
         ],
-
-        'cleanup' => [
-
-            'enabled' => true,
-
-            'method' => 'cleanup',
-
-            'description' => 'Cleanup temporary files.',
-
-            'schedule' => 'hourly',
-
-            'timeout' => 120,
-
-            'monitor' => true,
-
-        ],
-
     ],
-
 ];
 ```
 
----
+### Required Global Keys
 
-# Source of Truth
+- `jobs`
 
-The configuration file defines:
+### Optional Global Keys
 
-- available jobs
-- descriptions
-- execution methods
-- timeout expectations
-- monitoring
-- intended schedule
+- `status_path`: directory for heartbeat files. Default: `sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'setupcase-cron'`.
+- `security.allowed_ips`: allowed execution request IPs. Empty or omitted means token-only execution.
+- `security.execution_token`: token required for execution. If omitted or blank, execution must be disabled except in CLI/unit-test contexts explicitly chosen by implementation.
 
-Everything operational originates from this file.
+### Job Keys
 
-No duplicated configuration.
+Job keys must be lowercase slug values containing only letters, numbers, and underscores.
 
----
+Valid:
 
-# Heartbeat Files
-
-Every successful job overwrites one heartbeat file.
-
-Example:
-
+```text
+email_queue
+cleanup_tmp
+daily_reports
 ```
-/home/projectName/private/cronjobs/email_queue.status
+
+Invalid:
+
+```text
+EmailQueue
+email-queue
+../email_queue
+email.queue
+```
+
+The job key becomes the heartbeat filename:
+
+```text
+email_queue -> email_queue.status
+```
+
+### Required Job Keys
+
+- `enabled`: boolean.
+- `service`: fully qualified service class name.
+- `method`: public method to call on the service.
+- `description`: short human-readable description.
+- `schedule`: human-readable expected hosting cadence.
+- `max_age`: seconds before the last successful heartbeat is considered stale.
+- `monitor`: boolean.
+
+### Optional Job Keys
+
+- `interval`: minimum seconds between successful `run_all` executions. Default: `0`.
+- `timeout`: expected max runtime in seconds. The first implementation records this in status output but does not need to enforce process termination.
+
+## Callable Job Contract
+
+Each job should be a public method on a service class.
+
+Preferred successful response:
+
+```php
+[
+    'STATUS' => 200,
+    'MSG' => 'Processed email queue',
+]
+```
+
+Preferred failed response:
+
+```php
+[
+    'STATUS' => 500,
+    'MSG' => 'Email queue failed',
+]
+```
+
+Rules:
+
+- `STATUS` in the `200` range means success and writes a heartbeat.
+- Any missing, non-array, or non-`200` range response means failure and does not write a success heartbeat.
+- Exceptions are caught by `CronService`, returned as failed job results, and must not expose sensitive exception text through the public endpoint when `debug` is false.
+
+## Heartbeat Files
+
+Each successful job overwrites one heartbeat file:
+
+```text
+<status_path>/<job_key>.status
 ```
 
 Contents:
 
-```
+```text
 2026-07-19T11:42:08-04:00
 ```
 
-Nothing else.
+Rules:
 
-No append.
+- The file contains only an ISO-8601 timestamp.
+- The file is overwritten on success.
+- Failure does not overwrite the previous success heartbeat.
+- No append, rotation, or log parsing in the first pass.
+- `CronService` creates `status_path` when possible.
+- If `status_path` is not writable, job execution reports failure and status reports the path problem without exposing private server paths unless debug mode allows it.
 
-No parsing.
+## Status Health Rules
 
-No rotation.
+`status` inspects only jobs with `monitor = true`.
 
-Simply overwrite.
+A monitored job is healthy when:
 
----
+- It is enabled.
+- Its heartbeat file exists.
+- The heartbeat timestamp is parseable.
+- `generated_at - last_success <= max_age`.
 
-# Why Status Files?
+A monitored job is unhealthy when:
 
-Heartbeat files survive deployments.
+- It is enabled but has no heartbeat.
+- Its heartbeat timestamp is invalid.
+- Its heartbeat is older than `max_age`.
+- Its status file cannot be read.
 
-Unlike files inside the project directory, the private hosting directory remains untouched.
+Disabled jobs appear in the response but do not count as failed.
 
-Example:
+Monitoring uses `max_age`. Scheduling uses `interval`. Keep both values explicit because alert thresholds and execution cadence are related but not always identical.
 
-```
-/home/projectName/private/
+Top-level health:
 
-    cronjobs/
-
-        email_queue.status
-
-        cleanup.status
-
-        reports.status
-```
-
-Deploying a new version does not reset monitoring history.
-
----
-
-# Default Behaviour
-
-If:
-
-```
-status_path
+```text
+healthy = failed_jobs == 0
 ```
 
-is omitted,
-
-SetupCase automatically uses:
-
-```
-sys_get_temp_dir()
-```
-
-Typically:
-
-```
-/tmp
-```
-
-This allows every SetupCase project to function immediately with zero configuration.
-
----
-
-# Generated Filenames
-
-The cron key automatically becomes the filename.
-
-```
-email_queue
-```
-
-becomes
-
-```
-email_queue.status
-```
-
-No filename configuration required.
-
-Deterministic.
-
-Consistent.
-
-Simple.
-
----
-
-# CronService Responsibilities
-
-CronService should:
-
-- Load config/cron.php
-- Execute one job
-- Execute all jobs
-- Generate monitoring status
-- Write heartbeat files
-- Return execution results
-- Eventually expose execution history
-
----
-
-# run_all
-
-```
-?action=run_all
-```
-
-Loops through every enabled registered job.
-
-Adding a new scheduled operation never requires hosting changes.
-
-Only:
-
-- register the job
-- implement the method
-
----
-
-# Run One Job
-
-```
-?action=run&job=email_queue
-```
-
-Useful for:
-
-- debugging
-- manual execution
-- testing
-- future administration UI
-
----
-
-# Status Endpoint
-
-```
-?action=status
-```
-
-Returns monitoring information.
+## Status JSON Contract
 
 Example:
 
 ```json
 {
-    "generated_at": "2026-07-19T11:42:08-04:00",
-
-    "healthy": true,
-
-    "total_jobs": 4,
-
-    "enabled_jobs": 3,
-
-    "healthy_jobs": 3,
-
-    "failed_jobs": 0,
-
-    "jobs": {
-
-        "email_queue": {
-
-            "enabled": true,
-
-            "description": "Process queued emails.",
-
-            "schedule": "every minute",
-
-            "timeout": 300,
-
-            "monitor": true,
-
-            "last_success": "2026-07-19T11:41:00-04:00"
-
-        }
-
+  "generated_at": "2026-07-19T11:42:08-04:00",
+  "healthy": true,
+  "total_jobs": 2,
+  "enabled_jobs": 2,
+  "monitored_jobs": 2,
+  "healthy_jobs": 2,
+  "failed_jobs": 0,
+  "jobs": {
+    "email_queue": {
+      "enabled": true,
+      "description": "Process queued emails.",
+      "schedule": "every minute",
+      "interval": 60,
+      "max_age": 120,
+      "timeout": 300,
+      "monitor": true,
+      "healthy": true,
+      "last_success": "2026-07-19T11:41:00-04:00",
+      "age_seconds": 68
     }
-
+  }
 }
 ```
 
----
+Do not include execution tokens, full private paths, or raw exception traces.
 
-# System Health
+## Execution JSON Contract
 
-The top-level status object exposes the overall health of the installation.
+`run` response example:
 
-```
-healthy
-```
-
-This allows monitoring software to determine whether the entire cron system is healthy without iterating through every job.
-
-Internally:
-
-```
-healthy = (failed_jobs == 0)
-```
-
-This definition can evolve in the future to include:
-
-- stale heartbeat detection
-- timeout violations
-- lock file detection
-- execution failures
-
-without changing the external API.
-
----
-
-# Security
-
-Execution requires:
-
-- IP whitelist
-- execution token
-
-Status can remain public.
-
-Reason:
-
-External monitoring services need to verify deployment health without authentication.
-
-Execution remains protected.
-
----
-
-# Silent Failures
-
-```
-/cron.php
+```json
+{
+  "generated_at": "2026-07-19T11:42:08-04:00",
+  "STATUS": 200,
+  "MSG": "Executed job",
+  "job": "email_queue",
+  "result": {
+    "STATUS": 200,
+    "MSG": "Processed email queue"
+  },
+  "heartbeat_written": true
+}
 ```
 
-Returns:
+`run_all` response example:
 
-```
-404
-```
-
-No body.
-
-Unknown actions:
-
-```
-404
-```
-
-No body.
-
-Avoid exposing framework internals.
-
----
-
-# Deployment Benefits
-
-After initial installation:
-
-Hosting never changes.
-
-The hosting provider always executes:
-
-```
-cron.php?action=run_all
+```json
+{
+  "generated_at": "2026-07-19T11:42:08-04:00",
+  "STATUS": 200,
+  "MSG": "Execution loop completed",
+  "total_jobs": 2,
+  "due_jobs": 1,
+  "executed_jobs": 1,
+  "skipped_jobs": 1,
+  "successful_jobs": 1,
+  "failed_jobs": 0,
+  "jobs": {
+    "email_queue": {
+      "STATUS": 200,
+      "MSG": "Processed email queue",
+      "heartbeat_written": true
+    },
+    "cleanup_tmp": {
+      "STATUS": 204,
+      "MSG": "Not due",
+      "heartbeat_written": false
+    }
+  }
+}
 ```
 
-Developers only modify:
+`run_all` should keep executing remaining due jobs after one job fails.
 
-```
-config/cron.php
-```
+## `CronService` Responsibilities
 
-Adding a new scheduled operation requires:
+`App\Service\CronService` should own the business logic:
 
-- one configuration entry
-- one service method
+- Load and validate `sourceFiles/config/cron.php`.
+- Normalize defaults.
+- Validate job keys.
+- Authorize execution requests.
+- Decide whether enabled jobs are due for `run_all`.
+- Execute one enabled job.
+- Execute all due enabled jobs.
+- Catch job exceptions.
+- Write heartbeat files after successful job runs.
+- Generate monitoring status.
+- Return structured response arrays suitable for JSON output.
 
-Nothing else.
+Keep `sourceFiles/webroot/cron.php` small. It should bootstrap CakePHP, instantiate `CronService`, dispatch based on `$_GET['action']`, emit JSON, and centralize silent `404` responses.
 
----
+## Security
 
-# Future Monitoring Server
+Execution is protected by:
 
-The centralized monitoring server simply requests:
+- Token check through `CRON_EXECUTION_TOKEN`.
+- Optional IP allowlist.
 
-```
-https://client.com/cron.php?action=status
-```
+Security rules:
 
-This verifies:
+- Status is public by default because external monitoring needs unauthenticated deployment checks.
+- Execution must fail closed when `CRON_EXECUTION_TOKEN` is missing.
+- Compare tokens with `hash_equals`.
+- Read token from query string for shared-hosting compatibility.
+- Do not log or return the submitted token.
+- Return the same `404` empty response for unauthorized and unknown execution requests.
 
-- webroot/cron.php exists
-- CakePHP boots
-- CronService loads
-- configuration loads
-- heartbeat files exist
-- overall health
-- individual job health
+## Testing Plan
 
-No SSH.
+Before writing tests, check whether `docs/Intergration_testing.md` exists. It is currently absent in this repository, so test-related implementation work should either ask to scaffold it or avoid adding new scenario rows until it exists.
 
-No VPN.
+Suggested tests:
 
-No database access.
+- Config defaulting uses a temp `setupcase-cron` status directory when `status_path` is omitted.
+- Invalid job keys are rejected.
+- `status` marks enabled monitored jobs without heartbeat files as unhealthy.
+- Fresh heartbeat files are healthy.
+- Stale heartbeat files are unhealthy.
+- Disabled jobs are listed but do not count as failed.
+- Successful job execution writes a heartbeat.
+- Failed job execution does not overwrite an existing heartbeat.
+- `run_all` executes remaining due jobs after one failure.
+- Missing execution token disables execution.
+- Wrong token and unknown action return silent `404`.
 
----
+## Implementation Phases
 
-# Future Administration UI
+### Phase 1: Core Contract
 
-```
-Administration
+- Add `sourceFiles/config/cron.php` with no enabled project jobs by default.
+- Add `App\Service\CronService`.
+- Add `sourceFiles/webroot/cron.php`.
+- Add focused service tests.
+- Verify PHP syntax with `php -l`.
+- Run the focused PHPUnit test file.
 
-Cron Jobs
+### Phase 2: First Real Job
 
----------------------------------
+- Register the first real project cron job.
+- Implement the job service method.
+- Confirm `run` and `run_all` write heartbeats.
+- Confirm `status` reports health from the heartbeat.
 
-Email Queue
+### Phase 3: Monitoring Integration
 
-Run
+- Point external monitoring at `https://client.com/cron.php?action=status`.
+- Define alert thresholds around top-level `healthy`.
+- Keep execution endpoints token/IP protected.
 
-Last Success
+### Phase 4: Administration UI
 
-Healthy
+- Build a read-only cron jobs admin page from `config/cron.php` and heartbeat files.
+- Add manual "Run" buttons only after access control rules are explicitly defined.
 
----------------------------------
+## Future Enhancements
 
-Cleanup
+- Lock files to prevent overlapping execution.
+- Execution duration tracking.
+- Database-backed execution history.
+- Retry policy.
+- Timeout enforcement.
+- Notification rules.
+- Centralized dashboard.
+- Scheduled health reports.
+- Internal due-job scheduler.
 
-Run
+## Guiding Principle
 
-Last Success
-
-Healthy
-```
-
-Everything comes directly from:
-
-- config/cron.php
-- heartbeat files
-
----
-
-# Future Enhancements
-
-- execution history
-- retry failed jobs
-- stale heartbeat detection
-- timeout monitoring
-- execution duration
-- lock files (prevent overlapping execution)
-- notification rules
-- centralized dashboard
-- distributed monitoring
-- scheduled health reports
-- future internal scheduler
-- email alerts
-- Slack / Teams notifications
-
----
-
-# Guiding Principle
-
-**The hosting provider should not define application behaviour.**
-
-The hosting provider has one responsibility:
-
-> Execute `/webroot/cron.php`.
-
-The application is responsible for:
-
-- declaring scheduled operations
-- executing them
-- tracking them
-- monitoring them
-- reporting them
-
-The project declares its operational intent through:
-
-```
-config/cron.php
-```
-
-The framework provides the execution engine through:
-
-```
-CronService
-```
-
-The infrastructure remains permanently stable through:
-
-```
-webroot/cron.php
-```
-
-This creates a deterministic, self-documenting, deployment-safe architecture that scales from shared hosting to enterprise environments while requiring almost no maintenance over the lifetime of a SetupCase project.
+The hosting provider should not define application behavior. Hosting has one responsibility: execute `sourceFiles/webroot/cron.php`. SetupCase owns job declaration, execution, heartbeat tracking, and health reporting through `sourceFiles/config/cron.php` and `App\Service\CronService`.
