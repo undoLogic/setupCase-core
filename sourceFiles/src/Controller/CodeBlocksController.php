@@ -77,6 +77,44 @@ class CodeBlocksController extends AppController
 
     }//index
 
+    public function agents()
+    {
+        $agentsFile = ROOT . DS  . 'AGENTS-copy.md';
+
+        //dd($agentsFile);
+        $agentsFileContent = 'AGENTS.md file not found.';
+
+        if (is_readable($agentsFile)) {
+            $agentsFileContent = file_get_contents($agentsFile);
+        }
+
+        if ($agentsFileContent === false) {
+            $agentsFileContent = 'AGENTS.md file could not be read.';
+        }
+
+        $this->set('codeBlocks_title', 'AGENTS.md');
+        $this->set('codeBlocks_subTitle', 'Repository-specific development instructions.');
+        $this->set(compact('agentsFileContent'));
+    }
+
+    public function intergrationTesting()
+    {
+        $intergrationTestingFile = ROOT . DS . 'Intergration_testing-COPY.md';
+        $intergrationTestingFileContent = 'Intergration testing file not found.';
+
+        if (is_readable($intergrationTestingFile)) {
+            $intergrationTestingFileContent = file_get_contents($intergrationTestingFile);
+        }
+
+        if ($intergrationTestingFileContent === false) {
+            $intergrationTestingFileContent = 'Intergration testing file could not be read.';
+        }
+
+        $this->set('codeBlocks_title', 'Intergration Testing');
+        $this->set('codeBlocks_subTitle', 'Integration test coverage tracking instructions.');
+        $this->set(compact('intergrationTestingFileContent'));
+    }
+
     public function index() {
         //Intro page
     }

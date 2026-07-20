@@ -117,6 +117,22 @@ class AppController extends Controller
                         ],
                     ],
                     [
+                        'name' => 'AGENTS.md',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'agents',
+                        ],
+                    ],
+                    [
+                        'name' => 'Intergration Testing',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'intergrationTesting',
+                        ],
+                    ],
+                    [
                         'name' => 'Responsive Table',
                         'link' => [
                             'prefix' => false,
