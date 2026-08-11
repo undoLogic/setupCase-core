@@ -97,6 +97,10 @@ class CodeBlocksController extends AppController
         $this->set(compact('agentsFileContent'));
     }
 
+    public function passwordlessEmailLogin() {
+
+    }
+
     public function intergrationTesting()
     {
         $intergrationTestingFile = ROOT . DS . 'Intergration_testing-COPY.md';
