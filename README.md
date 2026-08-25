@@ -1,8 +1,27 @@
 # What is SetupCase?
 
-SetupCase is the foundation behind how we build software at undoLogic. Developed and refined through years of real-world projects, it provides a proven starting point for creating secure, structured and maintainable web applications without rebuilding the same foundation every time. Built on CakePHP, SetupCase combines our established architecture, development conventions, reusable components and deployment workflows into a consistent framework that lets us move quickly from a new idea to a working application—while continuously improving the core and bringing those improvements forward into future projects.
+**SetupCase is the foundation behind how we build software at undoLogic.**
 
-#### SetupCase is opinionated. Not all feature requests will be accepted. The project roadmap is maintained by undoLogic.
+Developed and refined through **years of real-world projects**, SetupCase provides a proven starting point for creating web applications without rebuilding the same foundation every time.
+
+### SetupCase provides:
+
+* **A proven application foundation** — start new projects from an established architecture instead of starting from scratch.
+* **Built on CakePHP** — leveraging a mature PHP framework while adding our own conventions, structure and reusable components.
+* **Consistent development patterns** — projects follow the same architecture and conventions, making them easier to understand and maintain.
+* **Reusable functionality** — improvements developed for individual projects can be refined and pushed back into SetupCase Core.
+* **Faster project development** — spend more time building what makes a project unique instead of rebuilding common infrastructure.
+* **Long-term maintainability** — projects benefit from improvements made to the core architecture over time.
+
+### Build → Improve → Contribute Back
+
+SetupCase follows a simple philosophy:
+
+**Start with SetupCase Core → Build the project → Improve the foundation → Push reusable improvements back to SetupCase Core → Use those improvements on future projects.**
+
+This allows SetupCase to continuously evolve based on **real production software and real-world requirements**.
+
+> **SetupCase is opinionated.** Not all feature requests will be accepted. The project roadmap and architectural direction are maintained by **undoLogic**.
 
 ## Creating a New Project from SetupCase Core
 
