@@ -46,10 +46,10 @@ Open the SetupCase Core repository:
 
 Use the following settings:
 
-* **Owner:** `undoLogic`
+* **Include all branches:** **UNCHECK** this option.
+* **Owner:** Choose your preferred owner eg `undoLogic`
 * **Repository name:** Enter the name of the new project.
 * **Visibility:** Select **Private**.
-* **Include all branches:** **UNCHECK** this option.
 
 > **Important:** Do not select **Include all branches**. The new project should be created from the primary SetupCase Core template branch only.
 
