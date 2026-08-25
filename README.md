@@ -65,13 +65,15 @@ The new repository can now be cloned to the local development environment using 
 
 Clone the newly created repository and save it inside the existing local project directory used for SetupCase development.
 
-The project should be stored inside the WSL/Ubuntu development environment.
+The project should be stored inside the WSL/Ubuntu development environment or if you are working in Linux or Mac it's easier you can work in your normal files.
 
 ---
 
-## 3. Open the WSL Terminal
+## 3. Open in Terminal
 
-Open a terminal using the Ubuntu WSL environment.
+Open a terminal using the Ubuntu WSL environment
+- Windows use Ubuntu WSL environment
+- Mac/Linux use Terminal
 
 Navigate to the newly cloned project directory.
 
@@ -82,15 +84,19 @@ cd /path/to/projects/new-project
 ```
 
 Confirm that you are in the project's root directory before continuing.
-
 ---
 
 ## 4. Build the Docker Environment
 
-Navigate into the SetupCase Docker WSL directory:
+Navigate into the SetupCase Docker directory 
 
+Windows 
 ```bash
 cd dockerWSL
+```
+OR Linux
+```bash
+cd dockerLinux
 ```
 
 Run the SetupCase Docker build script:
@@ -138,12 +144,12 @@ Allow the installation process to complete.
 Confirm that:
 
 * The installation completes successfully.
-* No PHP errors are displayed.
+* No PHP errors are displayed. 
 * No CakePHP errors are displayed.
 * No database or configuration errors are reported.
 
 Do not continue until the initialization completes without errors.
-
+- NOTE: Linux currently shows a wrong exit code when it does work successfully
 ---
 
 ## 7. Verify Source Files
@@ -190,3 +196,11 @@ At this point:
 * The source-files interface has been verified.
 
 The project is now ready for project-specific configuration and development.
+
+## NEXT
+
+- Now that the project has been **initialized and all required files are set up**, you can switch back to Windows and continue development using our **Cloud development server**, which requires significantly less local overhead.
+- Even when developing on Linux, the **Cloud server is the preferred environment for day-to-day development**. It avoids running unnecessary local Docker containers and makes switching between projects faster and easier.
+- Using the Cloud environment means you **do not need to close, rebuild, or restart Docker containers** every time you move between projects.
+
+> **Local Docker is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.**is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.
