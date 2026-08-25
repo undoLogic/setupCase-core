@@ -303,6 +303,19 @@ git commit --no-verify
 
 # Testing and Verification
 
+## MVP Work
+
+When the user says they are creating or building an "MVP":
+
+- Do not create, modify, or scaffold automated tests.
+- Do not create or update integration test tracking entries.
+- Feature/spec files may still be created or updated when they are part of the normal workflow.
+- Focus on getting the feature running for manual verification.
+- Still run lightweight syntax, lint, or build checks when useful to confirm the MVP starts or renders.
+- Clearly state that automated tests were skipped because the work was requested as an MVP.
+
+---
+
 ## Template Changes
 
 Verify:
