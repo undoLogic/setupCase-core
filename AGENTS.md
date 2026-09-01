@@ -308,8 +308,9 @@ git commit --no-verify
 When the user says they are creating or building an "MVP":
 
 - Do not create, modify, or scaffold automated tests.
-- Do not create or update integration test tracking entries.
 - Feature/spec files may still be created or updated when they are part of the normal workflow.
+- Keep the feature file's `## Testing` section focused on expected behaviour that should eventually be verified.
+- Do not mark unexecuted scenarios as covered.
 - Focus on getting the feature running for manual verification.
 - Still run lightweight syntax, lint, or build checks when useful to confirm the MVP starts or renders.
 - Clearly state that automated tests were skipped because the work was requested as an MVP.
@@ -334,45 +335,158 @@ Verify:
 
 ---
 
-## Integration Test Tracking
+## Feature Documentation and Test Specifications
 
-- This project tracks integration test coverage in `docs/Intergration_testing.md`.
-- When starting test-related work, check whether that file exists.
-- If it does not exist, prompt the user to create it before writing new tests.
-- Each scenario in the file should be linked to a real test via its `STATUS` field once covered.
-- If the user agrees to create it, scaffold it with this content:
+Each significant feature should have a dedicated Markdown feature file.
 
-````
-# Intergration testing
+The feature file is the **single source of truth** for:
 
-This file is the source of truth for which integration tests must stay active in `sourceFiles/tests/`.
-Each `##` row describes one scenario and the test method that proves it. When you add a row, Claude
-(or whoever picks this up) should either find the matching test and link it via `STATUS`, or write it.
+- feature intent
+- business rules
+- expected behaviour
+- important implementation surfaces
+- edge cases
+- human-readable test scenarios
+- automated test coverage
 
-## Row template
+Do not create separate integration-test planning or tracking documents when the scenarios belong to an existing feature.
 
-Copy this block for every new scenario. `LAYER` and the second `STEPS` line are optional — everything
-else is the minimum needed to write or verify the test without guessing.
+### Feature File Requirement
 
-```
-## <Title — also becomes the test method name, e.g. "Ensure Foo Works" -> testEnsureFooWorks>
-<1-3 sentences of business context, optional>
+When creating or materially modifying a feature:
 
-LAYER: Table                  <- omit if Table-level (default). Set to "Controller" only if this
-                                  genuinely needs a real HTTP request/response cycle.
-DATA: <fixtures / preconditions the test must set up>
-WHAT_TO_TEST: <the function, method, or URL surface being exercised>
-STEPS:
-  1. <action> -> EXPECT: <assertion>
-  2. <action> -> EXPECT: <assertion>
-STATUS: ❌ missing                 <- or: ✅ covered — <path/to/Test.php>::<testMethodName>
-```
+1. Locate the existing feature Markdown file.
+2. Read it before making implementation changes.
+3. Update it whenever feature behaviour, requirements, or expectations change.
+4. Add or update the `## Testing` section as part of the same work.
+5. Ensure automated tests remain aligned with the documented scenarios.
 
-Use a single `STEPS` line when there's only one action/assertion. Use a numbered list when the
-scenario has multiple phases (e.g. "before the record exists" vs "after").
+If no feature file exists for a significant new feature, create one under the project's established feature documentation location before or alongside implementation.
+
+The feature file should describe **what the system must do**, not duplicate the PHP implementation.
 
 ---
-````
+
+## Testing Section
+
+Every feature file should contain a:
+
+```markdown
+## Testing
+```
+
+section.
+
+Tests should be grouped by behaviour or responsibility.
+
+Use the following lightweight format:
+
+```markdown
+## Testing
+
+### <Test Group>
+
+**Intent:** <What behaviour or business rule this group protects>
+
+**Surfaces:**
+- `<important class, method, controller, URL, service, table, etc.>`
+
+#### Scenarios
+
+- [ ] <Human-readable behaviour or outcome>
+- [ ] <Human-readable behaviour or outcome>
+- [ ] <Human-readable edge case>
+```
+
+Example:
+
+```markdown
+## Testing
+
+### Email Queue Processing
+
+**Intent:** Ensure queued emails are processed once and successful execution is recorded.
+
+**Surfaces:**
+- `CronService`
+- `EmailQueueTable`
+- `cron.php?action=run&job=email_queue`
+
+#### Scenarios
+
+- [ ] An enabled email queue job processes pending messages.
+- [ ] A successful run updates the job heartbeat.
+- [ ] A failed run does not replace the previous successful heartbeat.
+- [ ] A disabled job cannot be executed.
+```
+
+Keep scenarios:
+
+- concise
+- behaviour-focused
+- implementation-independent where practical
+- understandable by a developer without reading the test code
+
+Do not include detailed PHPUnit syntax or implementation logic in the feature file.
+
+---
+
+## Automated Test Alignment
+
+The Markdown scenarios define the expected behaviour.
+
+Automated tests under:
+
+```text
+sourceFiles/tests/
+```
+
+implement and verify those scenarios.
+
+When changing feature behaviour:
+
+1. Update the feature file first or as part of the same change.
+2. Review the `## Testing` scenarios.
+3. Update affected automated tests to match.
+4. Add tests for newly documented behaviour where appropriate.
+5. Remove or update tests that represent behaviour which is no longer valid.
+
+Never silently change automated tests to accommodate changed code when the feature specification still describes the old behaviour.
+
+If the implementation, test, and feature document disagree, identify the conflict and use the feature file as the intended behavioural source of truth unless the user explicitly changes the requirement.
+
+---
+
+## Test Coverage References
+
+When useful, a documented scenario may reference its automated test after coverage exists.
+
+Example:
+
+```markdown
+- [x] A successful run updates the job heartbeat.
+  - Test: `sourceFiles/tests/TestCase/Service/CronServiceTest.php::testSuccessfulRunUpdatesHeartbeat`
+```
+
+This reference is optional.
+
+Do not require test paths for every scenario if doing so would create unnecessary maintenance overhead.
+
+The human-readable scenario remains the authoritative requirement.
+
+---
+
+## Feature Work Completion
+
+For non-MVP feature work, do not consider a feature change complete until:
+
+- the implementation is complete
+- the feature Markdown reflects the current behaviour
+- the `## Testing` section reflects the expected behaviour
+- relevant automated tests have been updated or added where practical
+- executed verification is reported
+
+If automated testing cannot be completed, leave the human-readable testing scenarios accurate and clearly state which scenarios remain unverified.
 
 ---
 
@@ -392,7 +506,8 @@ When reviewing code, prioritize:
 2. Security risks
 3. Data handling issues
 4. Validation and error handling
-5. Missing test coverage
+5. Feature documentation and testing scenarios are out of sync with the implementation
+6. Missing automated test coverage
 
 ---
 
