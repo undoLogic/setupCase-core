@@ -9,7 +9,7 @@ Repository-specific instructions for development, code reviews, refactoring, and
 
 - PHP (`CakePHP`)
 - Frontend templates located under:
-    - `sourceFiles/templates`
+  - `sourceFiles/templates`
 
 ---
 
@@ -41,8 +41,8 @@ These references are considered canonical implementation examples and reusable a
 - Push business logic and data handling into models whenever possible ("fat models").
 - Keep public functions and base templates short enough to fit on one screen whenever possible.
 - Move complexity into:
-    - private helper methods
-    - template elements
+  - private helper methods
+  - template elements
 
 ---
 
@@ -68,8 +68,8 @@ Additional response data may be included as needed.
 - Private functions may return simple values.
 - Public functions should remain under approximately `35` lines whenever possible.
 - If a public function becomes too large:
-    - split logic into private helper functions
-    - keep the public method as an orchestration layer
+  - split logic into private helper functions
+  - keep the public method as an orchestration layer
 
 Name helper methods using:
 
@@ -99,6 +99,31 @@ Avoid excessive chaining of return values between private helper functions whene
 ---
 
 # Template / View Rules
+
+## Passive View Principle
+
+Templates and elements must stay "dumb" (a Passive View / Humble View).
+They render data they are handed; they do not decide, transform, or derive it.
+
+- No branching on business state (status checks, permission logic, workflow
+  rules) beyond simple `if (!empty($rows))` / `foreach` over data that is
+  already shaped for display.
+- No data transformation (formatting aside) — grouping, filtering,
+  aggregating, or deriving one value from another belongs in a Table method,
+  not a template.
+- Computed display strings (e.g. a label built from two fields, a link
+  target chosen by entity state) should arrive from the controller or model
+  as a ready-to-use view var, not be assembled inline in the template.
+- A template needing more than trivial `if`/`foreach` logic is a sign the
+  data preparation belongs one layer down (Table method, or a controller
+  helper if it is purely view-shaping, e.g. building a `$sections` array
+  from data the model already returned).
+
+This is the same "fat model, skinny controller" idea extended one layer
+further: fat model, skinny controller, dumb view. Keeping the view passive
+is what keeps it trivially correct — there is nothing in it to get wrong.
+
+---
 
 ## Base Template Philosophy
 
@@ -203,8 +228,8 @@ Do not edit these files directly.
 Instead:
 
 - Put overrides under:
-    - `sourceFiles/webroot/js`
-    - `sourceFiles/webroot/css`
+  - `sourceFiles/webroot/js`
+  - `sourceFiles/webroot/css`
 
 Prefer editing source files under:
 
@@ -259,17 +284,17 @@ If staged changes exist:
 Pre-commit blocks when:
 
 - public PHP methods exceed:
-    - default: `45` lines
+  - default: `45` lines
 - base templates exceed:
-    - default: `45` lines
+  - default: `45` lines
 
 Exemptions:
 
 - `private`
 - `protected`
 - template elements under:
-    - `sourceFiles/templates/element/`
-    - `sourceFiles/templates/elements/`
+  - `sourceFiles/templates/element/`
+  - `sourceFiles/templates/elements/`
 
 ---
 
@@ -331,7 +356,7 @@ Verify:
 
 - Run project tests whenever possible
 - If tests cannot be run:
-    - clearly state what was manually verified
+  - clearly state what was manually verified
 
 ---
 
@@ -516,16 +541,16 @@ When reviewing code, prioritize:
 - Be concise and direct
 - Include file paths for changes
 - Clearly state:
-    - assumptions
-    - blockers
-    - limitations
+  - assumptions
+  - blockers
+  - limitations
 
 ---
 
 # Local Conventions
 
 - Put reusable template snippets in:
-    - `sourceFiles/templates/element/`
+  - `sourceFiles/templates/element/`
 - Keep `CodeBlocks` examples simple and copy/paste friendly
 - Reuse shared SetupCase foundations whenever practical before introducing new patterns
 
