@@ -521,6 +521,20 @@ If automated testing cannot be completed, leave the human-readable testing scena
 - Keep diffs minimal
 - Make one logical change per commit whenever requested
 
+## Never Stage or Commit Automatically
+
+- Never run `git add` or `git commit` unless the user explicitly asks
+  for it in that turn.
+- This applies even after a large multi-file change, and even if the
+  user approved staging/committing earlier in the session — a prior
+  approval does not carry forward to new changes.
+- Leave changes in the working tree. The user reviews the diff and
+  stages/commits manually themselves, in their own single commit.
+- Reason: the user sometimes works against pending/remote servers
+  (not local), and manually staging is how they control exactly which
+  files get uploaded there. Do not shortcut this by staging on their
+  behalf "to save time."
+
 ---
 
 # Review Priorities
