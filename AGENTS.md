@@ -46,6 +46,53 @@ These references are considered canonical implementation examples and reusable a
 
 ---
 
+# Authorization & Data Scoping
+
+Two separate rules below — never conflate them.
+
+## Role Authorization: Prefix RBAC Only
+
+- Route prefix RBAC (`config/app.php` `rbac` array + `RbacMiddleware`) is the single source of truth for "can this role reach this action." Do not duplicate role checks inside controllers — no re-asking in the action what the middleware already answered.
+- Prefix access is all-or-nothing by design: granting a prefix to a role grants every current and future action under it. Role inheritance (e.g. Admin reaching everything under `Owner/*`) is intentional, not an oversight.
+- **Consequence to hold onto:** a new action added under an existing prefix is immediately reachable by every role already holding that prefix. If an action genuinely needs to be stricter than its prefix, either split it into a narrower prefix or add an explicit in-action check (e.g. `AppController::isOwner()`) — don't rely on the action just not being linked to anywhere.
+
+## Data Scoping: Separate From RBAC, Never Optional
+
+"No duplicated role checks in controllers" does not mean no scoping. These answer different questions:
+
+| Question | Answered by |
+|---|---|
+| What kind of user are you? | Prefix RBAC (middleware) |
+| Is this row yours? | `group_id` / `user_id` scoping (model layer) |
+
+Ownership/tenant scoping is mandatory everywhere it applies, independent of the RBAC rule above.
+
+## Non-HTTP Entry Points
+
+- Prefix RBAC runs in middleware, tied to routing — cron jobs, console commands, and queue workers run at full privilege by design and get **zero** role protection from it.
+- Because of that: cron/console logic must never be reachable from a web route (no controller action shares a method with a cron task; no route triggers a scheduled job), and it must never infer scope from a session (none exists there) — scope must always be passed to it explicitly by the caller.
+
+## Destructive Operations: Scope Is Required, Never Inferred
+
+Applies to anything that deletes or overwrites data — regardless of caller, role, or how routine the record seems.
+
+1. The `group_id` (and `user_id` where applicable) is a required argument at the model level. Throw if missing, null, or empty — never default to "all," never fall back to the session inside the model.
+2. Filter on scope, don't check-then-delete: the delete query filters on record ID **and** group ID together in the same call. Never fetch a record, verify it in the controller, then delete by ID alone — a mismatched ID must affect zero rows.
+3. A tenant-scoped row with a null/missing `group_id` is a data integrity failure — refuse the operation, don't guess or match broadly.
+4. Enforce at the schema level where possible (`group_id NOT NULL`), so the invariant holds even when code forgets.
+5. Since nearly every table here is group-scoped, this is the default posture for destructive model methods. Running unscoped is an explicitly-justified exception (say why, in a comment) — never the thing that happens when nobody was paying attention.
+
+## Preconditions on the Target
+
+Beyond "is this row in scope," some operations require the target itself to qualify for the operation. This is a data invariant, not authorization — it holds no matter who calls it.
+
+- **Trigger:** any operation that deletes or overwrites data it doesn't own outright must declare a precondition on its target and refuse when unmet. Gate this on what the code actually does, not on whether someone remembered to label the feature "dangerous" — that's subjective and inconsistently applied.
+- **Where it lives:** in the model, next to the scope guard — not the controller.
+- **Where it doesn't live:** the model never checks *caller* permissions — it has no idea who's calling or whether a caller even exists in the usual sense. It checks the *target's* eligibility only. Deciding which scope is legitimate stays with the caller (a controller derives it from session; cron passes it deliberately).
+- Worked example: Demo Mode reset refuses to touch anything unless the target group is flagged `is_demo` — see `GroupsTable::demoData_init()` / `demoData_deleteAll()`. This is what stops a hypothetical future "reset every group" cron job from wiping real client data.
+
+---
+
 # Model / Table Rules
 
 ## Public Table Methods
