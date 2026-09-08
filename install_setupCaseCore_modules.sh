@@ -10,7 +10,9 @@ MODULES=(
     "codeBlocks"
     "init-web"
     "dockerWSL"
+    "dockerLinux"
     "launchPad_win"
+    "launchPad_linux"
 )
 
 cleanup() {
