@@ -15,6 +15,8 @@
 /sourceFiles/tmp/cache/models/myapp*
 /sourceFiles/tmp/cache/persistent/myapp*
 /sourceFiles/tmp/debug*
+/sourceFiles/tmp/uploads/*
+!/sourceFiles/tmp/uploads/.gitkeep
 /sourceFiles/logs/*.log
 
 ### temp cake download files
