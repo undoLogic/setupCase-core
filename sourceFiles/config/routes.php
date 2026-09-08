@@ -108,14 +108,14 @@ return function (RouteBuilder $routes): void {
             $routes->setRouteClass(DashedRoute::class);
 
             $routes->connect(
-                '/:language/:controller',
+                '/{language}/{controller}',
                 ['action' => 'index']
             )->setPatterns([
                 'language' => 'en|fr|es'
             ]);
 
             $routes->connect(
-                '/:language/:controller/:action/*'
+                '/{language}/{controller}/{action}/*'
             )->setPatterns([
                 'language' => 'en|fr|es'
             ]);
