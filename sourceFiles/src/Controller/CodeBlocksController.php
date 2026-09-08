@@ -162,6 +162,23 @@ class CodeBlocksController extends AppController
         ]);
     }
 
+    public function emailQueues()
+    {
+        $this->set('codeBlocks_title', 'Email Queues');
+        $this->set(
+            'codeBlocks_subTitle',
+            'MVP email queue: no project sends email directly, everything is written to a queue and sent via the SetupCase utility.'
+        );
+
+        $this->set('codeBlocks_renderFiles', [
+            'Schema' => APP . '../config/schema/2026-09-08.sql',
+            'Table' => APP . 'Model/Table/EmailQueuesTable.php',
+            'Attachments Table' => APP . 'Model/Table/EmailQueueAttachmentsTable.php',
+            'Controller' => APP . 'Controller/Staff/EmailQueuesController.php',
+        ]);
+        $this->set('codeBlocks_renderVar', []);
+    }
+
     public function envVars()
     {
         $this->set('codeBlocks_title', 'ENV Vars');
