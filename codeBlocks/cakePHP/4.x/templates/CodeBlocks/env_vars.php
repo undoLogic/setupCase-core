@@ -2,7 +2,7 @@
     <div class="card-body">
         <h2 class="h4">Server PHP_SETTINGS</h2>
         <p>Add the variable as a new line in <code>PHP_SETTINGS</code>:</p>
-        <pre class="mb-0"><code>VAR = "your-value"</code></pre>
+        <pre class="mb-0"><code>VAR = your-value</code></pre>
     </div>
 </div>
 
