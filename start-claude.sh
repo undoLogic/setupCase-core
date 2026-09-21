@@ -52,4 +52,4 @@ echo
 
 cd "$SCRIPT_DIR" || exit 1
 
-exec "$CLAUDE_COMMAND" "$@"
+exec "$CLAUDE_COMMAND" --rc "$@"
