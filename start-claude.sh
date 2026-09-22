@@ -47,7 +47,7 @@ else
 fi
 
 echo
-echo "Starting Codex..."
+echo "Starting Claude..."
 echo
 
 cd "$SCRIPT_DIR" || exit 1
