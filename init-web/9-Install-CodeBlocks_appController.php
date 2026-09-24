@@ -62,6 +62,19 @@ $beforeFilterBlock = <<<'PHP'
 
 PHP;
 
+$getUserIdBlock = <<<'PHP'
+
+    public function getUserId()
+    {
+        if (isset($this->request->getAttribute('identity')['id'])) {
+            return $this->request->getAttribute('identity')['id'];
+        }
+
+        return false;
+    }
+
+PHP;
+
 $setupCaseBlock = <<<'PHP'
 
     public function setupCase()
@@ -123,11 +136,35 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
+                        'name' => 'AGENTS.md',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'agents',
+                        ],
+                    ],
+                    [
+                        'name' => 'Email Queues',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'emailQueues',
+                        ],
+                    ],
+                    [
                         'name' => 'Responsive Table',
                         'link' => [
                             'prefix' => false,
                             'controller' => 'CodeBlocks',
                             'action' => 'responsiveTable',
+                        ],
+                    ],
+                    [
+                        'name' => 'Unified Cron Framework',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'unifiedCronFrameworkAndMonitoring',
                         ],
                     ],
                     [
@@ -232,7 +269,7 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
-                        'name' => 'Automated Emailers',
+                        'name' => 'Email Queues',
                         'link' => [
                             'prefix' => 'Staff',
                             'controller' => 'EmailQueues',
@@ -372,6 +409,15 @@ if (strpos($contents, 'public function beforeFilter(EventInterface $event)') ===
     $contents = $insertBeforeClassEnd($contents, $beforeFilterBlock, $count);
     if ($count !== 1) {
         echo "ERROR - class closing brace not found for beforeFilter";
+        exit(1);
+    }
+    $updated = true;
+}
+
+if (strpos($contents, 'public function getUserId(') === false) {
+    $contents = $insertBeforeClassEnd($contents, $getUserIdBlock, $count);
+    if ($count !== 1) {
+        echo "ERROR - class closing brace not found for getUserId";
         exit(1);
     }
     $updated = true;
