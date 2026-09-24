@@ -626,3 +626,372 @@ Add additional project-specific rules here over time:
 - CI/CD requirements
 - formatting standards
 - infrastructure constraints
+
+---
+
+# UpdateCase Conversion System
+
+## Purpose
+
+UpdateCase separates website presentation/programming from editable content.
+
+The intended workflow is:
+
+1. Build the website normally with realistic temporary/default content.
+2. Run **UpdateCase Convert** in Codex.
+3. Codex identifies editable content and replaces it with UpdateCase PHP calls.
+4. Codex preserves the original clean content in a deterministic Markdown import definition.
+5. Paste or upload that Markdown into UpdateCase.
+6. UpdateCase parses, validates, and shows a complete preview/review screen.
+7. The user confirms the proposed Site, Pages, Locations, Elements, Groups, and content.
+8. Only after confirmation does UpdateCase create the real database records.
+9. Connect/synchronize the website with UpdateCase and verify every field.
+10. Run **UpdateCase Cleanup** to remove temporary fallback/debug content.
+
+The Markdown import format must be deterministic and machine-parseable. Do not rely on AI inside UpdateCase to interpret the import file.
+
+---
+
+## Hierarchy
+
+UpdateCase content follows this hierarchy:
+
+```text
+Site
+└── Page
+    ├── Single Location
+    │   └── Element
+    └── Grouped Location
+        └── Group
+            └── Element
+```
+
+- A **Site** is the website being imported, such as `VendorGrid`.
+- A **Page** represents the UpdateCase page used by a website template.
+- A **Single Location** is a non-repeating logical section of editable content.
+- A **Grouped Location** is a repeating structure, such as slides, cards, testimonials, team members, products, authors, FAQs, or repeated image/text blocks.
+- An **Element** is one editable content value.
+- A **Group** is one item/row inside a Grouped Location.
+
+Single Locations and Grouped Locations may share the same name. The location type keeps them distinct, so `Single Location: Catalog` and `Grouped Location: Catalog` may coexist.
+
+---
+
+## Import Heading Format
+
+Use these Markdown headings exactly:
+
+```md
+# UpdateCase-Site: Site.name
+## UpdateCase-Page: Page.name
+### Source Templates
+### Page Metadata
+### Assets
+### Single Location: Location.name
+#### Grouped Location: Location.name
+```
+
+Rules:
+
+- Use the single top-level `#` heading for the website.
+- Use `##` headings for pages.
+- Use plain `###` headings only for export metadata sections such as source templates, page metadata, or assets.
+- Use `### Single Location: Name` for normal, non-group content areas.
+- Use `#### Grouped Location: Name` for grouped content areas.
+- Keep similar locations together, including related single and grouped locations.
+- Preserve visible copy, CTA labels, hrefs, image paths, alt text, form labels, and placeholder visual notes.
+
+Example of related locations staying together:
+
+```md
+### Single Location: Catalog
+#### Grouped Location: Catalog
+```
+
+---
+
+## Forms
+
+Forms are never grouped locations.
+
+Form inputs are manually wired in programming and should be exported as single elements under a separate single location:
+
+```md
+### Single Location: Demo
+### Single Location: Demo Form Fields
+```
+
+Keep form field locations separate from the related form intro/copy location, even when the content is visually adjacent or semantically similar.
+
+---
+
+## Element Types
+
+Valid element types are strictly:
+
+```text
+text
+paragraph
+general
+image
+```
+
+- Use `text` for short strings such as headings, labels, buttons, short descriptions, addresses, and other single-line values.
+- Use `paragraph` for plain multiline text without rich formatting.
+- Use `general` for rich text that requires formatting such as bold, italic, links, lists, or HTML.
+- Use `image` for editable website images.
+
+Do not invent new element types during conversion.
+
+Content rendering call:
+
+```php
+<?= $updateCase->getContentBy('LOCATION.NAME', 'ELEMENT.NAME'); ?>
+```
+
+Image rendering call:
+
+```php
+<?= $webroot.$updateCase->getImageBy('LOCATION.NAME', 'ELEMENT.NAME'); ?>
+```
+
+Grouped content rendering call:
+
+```php
+<?= $updateCase->getContentBy('LOCATION.NAME', 'ELEMENT.NAME', $group); ?>
+```
+
+Grouped image rendering call:
+
+```php
+<?= $webroot.$updateCase->getImageBy('LOCATION.NAME', 'ELEMENT.NAME', $group); ?>
+```
+
+The distinction between `text`, `paragraph`, and `general` matters to the UpdateCase editor/importer even though all three use `getContentBy()` when rendered.
+
+---
+
+## Page Selection
+
+Every converted template must define its UpdateCase page near the top of the template:
+
+```php
+<?php $updateCase->changePage('PAGE.NAME'); ?>
+```
+
+`PAGE.NAME` must correspond exactly with the Page name generated in the UpdateCase import definition.
+
+---
+
+## Group Loops
+
+Repeated adjacent structures should use Grouped Locations.
+
+Do not create independent Single Locations for every repeated item when they share the same structure. Instead, use one Grouped Location with multiple Groups.
+
+Example PHP:
+
+```php
+<?php $groups = $updateCase->getGroupNamesByLocation('Authors'); ?>
+<?php if ($groups): foreach ($groups as $group): ?>
+    <?= $updateCase->getContentBy('Authors', 'Name', $group); ?>
+    <?= $updateCase->getContentBy('Authors', 'Biography', $group); ?>
+    <?= $webroot.$updateCase->getImageBy('Authors', 'Photo', $group); ?>
+<?php endforeach; endif; ?>
+```
+
+The same Element names should normally be reused within each Group because each Group represents another instance of the same content structure.
+
+---
+
+## UpdateCase Convert
+
+When instructed to perform **UpdateCase Convert**, Codex must:
+
+1. Identify the applicable Page for each converted template.
+2. Add `<?php $updateCase->changePage('PAGE.NAME'); ?>` near the top of each applicable template.
+3. Divide the page into logical Single Locations and Grouped Locations.
+4. Identify editable Elements and classify each as `text`, `paragraph`, `general`, or `image`.
+5. Replace hard-coded editable content with UpdateCase calls.
+6. Preserve the original clean content in the generated import definition.
+7. Add temporary fallback/debug content in the website when needed.
+
+Do not convert structural HTML, CSS classes, JavaScript, layout logic, or technical configuration into editable content unless explicitly instructed.
+
+---
+
+## Temporary Fallback Content
+
+During conversion, the website must make it visually obvious when UpdateCase content is not yet being returned.
+
+Use a consistent marker such as:
+
+```text
+[UC-IMPORT] Original fallback content here
+```
+
+Rules:
+
+- Clean original content goes into the import definition.
+- Temporary website fallback/debug content is visibly marked.
+- If `[UC-IMPORT]` is visible after connecting UpdateCase, that field has not been successfully populated/connected.
+- The marker is temporary and must be removed during UpdateCase Cleanup.
+- Do not add the marker to the actual content imported into UpdateCase.
+
+---
+
+## Markdown Import Definition
+
+Codex must generate a Markdown file describing the UpdateCase structure and initial content.
+
+This file is data, not prose documentation. Do not add commentary, explanations, conversational text, or undocumented fields inside the import data.
+
+Use the required Markdown headings plus fenced YAML blocks under each metadata/location heading. YAML provides deterministic structure while keeping the file inspectable.
+
+Example:
+
+````md
+# UpdateCase-Site: VendorGrid
+
+## UpdateCase-Page: Home
+
+### Source Templates
+
+```yaml
+templates:
+  - sourceFiles/templates/Pages/home.php
+```
+
+### Single Location: Hero
+
+```yaml
+elements:
+  - name: Heading
+    type: text
+    value: "Turn Custom Orders Into a Visual Experience."
+  - name: Body
+    type: paragraph
+    value: "Let customers choose products, colours, quantities, logos and customization online."
+```
+
+#### Grouped Location: Catalog
+
+```yaml
+groups:
+  - name: "1"
+    elements:
+      - name: Heading
+        type: text
+        value: "Your Catalog"
+      - name: Body
+        type: paragraph
+        value: "Build your own products, colours, sizing, variants and customization options."
+```
+````
+
+### Import Schema
+
+Metadata blocks may contain keys such as:
+
+```text
+source_url
+captured_at
+language
+page_slug
+templates
+assets
+```
+
+Single Location blocks require:
+
+```text
+elements
+```
+
+Grouped Location blocks require:
+
+```text
+groups
+```
+
+Every Element requires:
+
+```text
+name
+type
+value
+```
+
+Every Group requires:
+
+```text
+name
+elements
+```
+
+Group names must be stable and deterministic. Sequential names such as `1`, `2`, `3` are acceptable unless a meaningful existing identifier is available.
+
+---
+
+## UpdateCase SaaS Import Workflow
+
+UpdateCase must not immediately create database records when this definition is pasted/uploaded.
+
+The intended application workflow is:
+
+```text
+Paste / Upload
+  -> Parse
+  -> Validate
+  -> Preview
+  -> User Review
+  -> Confirm Import
+  -> Create Records
+```
+
+At minimum, validation should confirm:
+
+- Required fields exist.
+- Element types are supported.
+- Location names are valid.
+- Element names are valid.
+- Group structures are valid.
+- Duplicate/conflicting names are detected according to UpdateCase rules.
+- Empty or malformed structures are reported.
+
+Only after explicit confirmation should UpdateCase create the actual Site, Page, Locations, Elements, Groups, and initial content. The importer should ideally perform creation transactionally so a failed import does not leave a partially created structure.
+
+---
+
+## UpdateCase Cleanup
+
+Run **UpdateCase Cleanup** only after:
+
+1. The Markdown definition has been imported into UpdateCase.
+2. The website has been connected/synchronized.
+3. The UpdateCase calls are returning the expected content.
+4. The developer has reviewed the website.
+
+Cleanup must:
+
+- Remove `[UC-IMPORT]` fallback/debug content.
+- Remove temporary fallback conditionals that are no longer required.
+- Leave the UpdateCase PHP calls intact.
+- Preserve all HTML structure and styling.
+- Preserve group loops.
+- Ensure no original hard-coded editable content remains accidentally duplicated.
+- Report any UpdateCase calls that still appear empty or unresolved rather than silently deleting their fallback.
+
+Do not remove fallback/debug content from an unresolved element merely to make the conversion appear complete.
+
+---
+
+## Core Principle
+
+Codex is responsible for understanding the website and proposing the UpdateCase structure.
+
+The generated Markdown is the deterministic contract between Codex and UpdateCase.
+
+UpdateCase itself should not have to guess what Codex meant.
+
+The human reviews the proposed structure before UpdateCase changes its database.
