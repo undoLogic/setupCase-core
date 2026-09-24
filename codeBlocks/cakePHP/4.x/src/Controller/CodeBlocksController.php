@@ -162,7 +162,7 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_title', 'ENV Vars');
         $this->set(
             'codeBlocks_subTitle',
-            'Store server-specific values in PHP_SETTINGS and read them with get_cfg_var().'
+            'Read server values (get_cfg_var) first, fall back to Docker env vars (env), then a default.'
         );
     }
 
