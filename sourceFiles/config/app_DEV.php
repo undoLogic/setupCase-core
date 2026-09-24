@@ -83,13 +83,14 @@ return [
      *
      * See app.php for more configuration options.
      */
+    // Server php.ini (prod) first, then Docker env (local), then default
     'Datasources' => [
         //@todo uncomment this if you want to use a database
         'default' => [
-            'url' => env('DATABASE_DEFAULT_URL', get_cfg_var('DATABASE.DEFAULT.URL') ?: null),
+            'url' => get_cfg_var('DATABASE.DEFAULT.URL') ?: env('DATABASE_DEFAULT_URL') ?: null,
         ],
         'test' => [
-            'url' => env('DATABASE_TEST_URL', get_cfg_var('DATABASE.TEST.URL') ?: null),
+            'url' => get_cfg_var('DATABASE.TEST.URL') ?: env('DATABASE_TEST_URL') ?: null,
         ],
     ],
 
