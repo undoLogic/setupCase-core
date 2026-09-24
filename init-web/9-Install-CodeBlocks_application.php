@@ -4,14 +4,14 @@ $applicationFile = dirname(__DIR__) . '/sourceFiles/src/Application.php';
 
 if (!file_exists($applicationFile)) {
     echo "ERROR - Application.php not found";
-    exit;
+    exit(1);
 }
 
 $contents = file_get_contents($applicationFile);
 
 if ($contents === false) {
     echo "ERROR - Could not read Application.php";
-    exit;
+    exit(1);
 }
 
 $contents = str_replace(["\r\n", "\r"], "\n", $contents);
@@ -26,7 +26,7 @@ $imports = [
 
 if (preg_match('/namespace App;\n\n((?:use [^\n]+;\n)+)/', $contents, $matches, PREG_OFFSET_CAPTURE) !== 1) {
     echo "ERROR - use import block not found";
-    exit;
+    exit(1);
 }
 
 $importInsertPos = $matches[1][1] + strlen($matches[1][0]);
@@ -51,7 +51,7 @@ if (strpos($contents, 'implements AuthenticationServiceProviderInterface') === f
     );
     if ($count !== 1) {
         echo "ERROR - class declaration anchor not found";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
@@ -130,14 +130,14 @@ if (strpos($contents, 'public function getAuthenticationService(ServerRequestInt
         );
         if ($count !== 1) {
             echo "ERROR - old getAuthenticationService method replacement failed";
-            exit;
+            exit(1);
         }
     } else {
         $needle = "        return \$middlewareQueue;\n    }\n";
         $contents = str_replace($needle, $needle . $newMethodBlock, $contents, $count);
         if ($count !== 1) {
             echo "ERROR - middleware anchor not found";
-            exit;
+            exit(1);
         }
     }
     $updated = true;
@@ -183,7 +183,7 @@ if (strpos($contents, 'use Cake\\Routing\\Router;') !== false && strpos($content
 
 if (!$updated) {
     echo "Application authentication setup already exists — skipping<br/>";
-    exit;
+    return;
 }
 
 file_put_contents($applicationFile, $contents);

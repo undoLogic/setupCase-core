@@ -21,21 +21,21 @@ $appConfigFile = dirname(__DIR__) . '/sourceFiles/config/app.php';
 
 if (!file_exists($appConfigFile)) {
     echo "ERROR - app.php not found";
-    exit;
+    exit(1);
 }
 
 $contents = file_get_contents($appConfigFile);
 
 if ($contents === false) {
     echo "ERROR - Could not read app.php";
-    exit;
+    exit(1);
 }
 
 $contents = str_replace(["\r\n", "\r"], "\n", $contents);
 
 if (strpos($contents, "'allowedLanguages' => [") !== false && strpos($contents, "'rbac' => [") !== false) {
     echo "app.php language/rbac config already exists — skipping<br/>";
-    exit;
+    return;
 }
 
 $insert = <<<'PHP'
@@ -59,7 +59,7 @@ $contents = str_replace($anchor, $anchor . $insert, $contents, $count);
 
 if ($count !== 1) {
     echo "ERROR - debug anchor not found in app.php";
-    exit;
+    exit(1);
 }
 
 file_put_contents($appConfigFile, $contents);

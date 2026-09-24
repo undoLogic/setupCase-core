@@ -4,10 +4,10 @@ $rootDir = dirname(__DIR__);
 $sourceDir = $rootDir . '/codeBlocks/.github';
 $targetDir = $rootDir . '/.github';
 
+// CI is optional - not every project uses it
 if (!is_dir($sourceDir)) {
-    echo "<h1 style='color: #b00020;'>CodeBlocks CI templates not found</h1>";
-    echo "Expected folder: codeBlocks/.github<br/>";
-    exit(1);
+    echo "No codeBlocks/.github folder — skipping CI setup<br/>";
+    return;
 }
 
 echo "<h1 style='color: cornflowerblue;'>Installing GitHub CI workflow</h1>";

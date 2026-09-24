@@ -4,14 +4,14 @@ $appViewFile = dirname(__DIR__) . '/sourceFiles/src/View/AppView.php';
 
 if (!file_exists($appViewFile)) {
     echo "ERROR - AppView.php not found";
-    exit;
+    exit(1);
 }
 
 $contents = file_get_contents($appViewFile);
 
 if ($contents === false) {
     echo "ERROR - Could not read AppView.php";
-    exit;
+    exit(1);
 }
 
 $contents = str_replace(["\r\n", "\r"], "\n", $contents);
@@ -27,11 +27,11 @@ if (strpos($contents, "\$this->loadHelper('Auth');") === false) {
         );
         if ($count !== 1) {
             echo "ERROR - initialize method anchor for Auth helper not found";
-            exit;
+            exit(1);
         }
     } else {
         echo "ERROR - initialize method not found";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
@@ -46,7 +46,7 @@ if (strpos($contents, "\$this->loadHelper('Lang');") === false) {
         );
         if ($count !== 1) {
             echo "ERROR - Auth helper anchor for Lang helper not found";
-            exit;
+            exit(1);
         }
     } elseif (strpos($contents, 'public function initialize(): void') !== false) {
         $contents = str_replace(
@@ -57,18 +57,18 @@ if (strpos($contents, "\$this->loadHelper('Lang');") === false) {
         );
         if ($count !== 1) {
             echo "ERROR - initialize method anchor for Lang helper not found";
-            exit;
+            exit(1);
         }
     } else {
         echo "ERROR - initialize method not found";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
 
 if (!$updated) {
     echo "AppView helpers already exist — skipping<br/>";
-    exit;
+    return;
 }
 
 file_put_contents($appViewFile, $contents);
