@@ -11,8 +11,9 @@ function runInstallScript(string $title, string $scriptPath, string $phpBinary):
     $command = escapeshellarg($phpBinary) . ' ' . escapeshellarg($scriptPath) . ' 2>&1';
     exec($command, $output, $exitCode);
 
+    // Sub-scripts are our own install scripts and already emit HTML
     foreach ($output as $line) {
-        echo htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . "<br/>";
+        echo $line . "<br/>";
     }
 
     if ($exitCode !== 0) {

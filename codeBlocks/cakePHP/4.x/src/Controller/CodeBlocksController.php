@@ -77,6 +77,26 @@ class CodeBlocksController extends AppController
 
     }//index
 
+    public function agents()
+    {
+        $agentsFile = ROOT . DS  . 'AGENTS-copy.md';
+
+        //dd($agentsFile);
+        $agentsFileContent = 'AGENTS.md file not found.';
+
+        if (is_readable($agentsFile)) {
+            $agentsFileContent = file_get_contents($agentsFile);
+        }
+
+        if ($agentsFileContent === false) {
+            $agentsFileContent = 'AGENTS.md file could not be read.';
+        }
+
+        $this->set('codeBlocks_title', 'AGENTS.md');
+        $this->set('codeBlocks_subTitle', 'Repository-specific development instructions.');
+        $this->set(compact('agentsFileContent'));
+    }
+
     public function index() {
         //Intro page
     }
@@ -100,6 +120,41 @@ class CodeBlocksController extends AppController
             'View' => APP . '../templates/CodeBlocks/responsive_table.php'
         ]);
 
+    }
+
+    public function unifiedCronFrameworkAndMonitoring()
+    {
+        $this->set('codeBlocks_title', 'Unified Cron Framework And Monitoring');
+        $this->set(
+            'codeBlocks_subTitle',
+            'MVP setup for project cron jobs using IP-restricted cron.php and public Table methods.'
+        );
+
+
+        $this->set('codeBlocks_renderFiles', [
+            'Project config' => APP . '../config/cron.php',
+            'Service' => APP . 'Service/CronService.php',
+        ]);
+        $this->set('codeBlocks_renderVar', [
+            //'2. Table method' => SetupCase::extractFunction(\App\Controller\CodeBlocksController::class, 'associations')
+        ]);
+    }
+
+    public function emailQueues()
+    {
+        $this->set('codeBlocks_title', 'Email Queues');
+        $this->set(
+            'codeBlocks_subTitle',
+            'MVP email queue: no project sends email directly, everything is written to a queue and sent via the SetupCase utility.'
+        );
+
+        $this->set('codeBlocks_renderFiles', [
+            'Schema' => APP . '../config/schema/2026-09-08.sql',
+            'Table' => APP . 'Model/Table/EmailQueuesTable.php',
+            'Attachments Table' => APP . 'Model/Table/EmailQueueAttachmentsTable.php',
+            'Controller' => APP . 'Controller/Staff/EmailQueuesController.php',
+        ]);
+        $this->set('codeBlocks_renderVar', []);
     }
 
     public function envVars()

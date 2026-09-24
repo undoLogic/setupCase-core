@@ -4,14 +4,14 @@ $appControllerFile = dirname(__DIR__) . '/sourceFiles/src/Controller/AppControll
 
 if (!file_exists($appControllerFile)) {
     echo "ERROR - AppController.php not found";
-    exit;
+    exit(1);
 }
 
 $contents = file_get_contents($appControllerFile);
 
 if ($contents === false) {
     echo "ERROR - Could not read AppController.php";
-    exit;
+    exit(1);
 }
 
 $contents = str_replace(["\r\n", "\r"], "\n", $contents);
@@ -26,7 +26,7 @@ $imports = [
 
 if (preg_match('/namespace App\\\\Controller;\n\n((?:use [^\n]+;\n)+)/', $contents, $matches, PREG_OFFSET_CAPTURE) !== 1) {
     echo "ERROR - use import block not found";
-    exit;
+    exit(1);
 }
 
 $importInsertPos = $matches[1][1] + strlen($matches[1][0]);
@@ -46,7 +46,7 @@ if (strpos($contents, "\$this->loadComponent('Authentication.Authentication');")
     $contents = str_replace($anchor, $anchor . "        \$this->loadComponent('Authentication.Authentication');\n", $contents, $count);
     if ($count !== 1) {
         echo "ERROR - initialize anchor not found";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
@@ -58,6 +58,19 @@ $beforeFilterBlock = <<<'PHP'
         parent::beforeFilter($event);
         $this->setupCase();
         $this->setupMenu();
+    }
+
+PHP;
+
+$getUserIdBlock = <<<'PHP'
+
+    public function getUserId()
+    {
+        if (isset($this->request->getAttribute('identity')['id'])) {
+            return $this->request->getAttribute('identity')['id'];
+        }
+
+        return false;
     }
 
 PHP;
@@ -123,11 +136,35 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
+                        'name' => 'AGENTS.md',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'agents',
+                        ],
+                    ],
+                    [
+                        'name' => 'Email Queues',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'emailQueues',
+                        ],
+                    ],
+                    [
                         'name' => 'Responsive Table',
                         'link' => [
                             'prefix' => false,
                             'controller' => 'CodeBlocks',
                             'action' => 'responsiveTable',
+                        ],
+                    ],
+                    [
+                        'name' => 'Unified Cron Framework',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'unifiedCronFrameworkAndMonitoring',
                         ],
                     ],
                     [
@@ -232,7 +269,7 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
-                        'name' => 'Automated Emailers',
+                        'name' => 'Email Queues',
                         'link' => [
                             'prefix' => 'Staff',
                             'controller' => 'EmailQueues',
@@ -372,7 +409,16 @@ if (strpos($contents, 'public function beforeFilter(EventInterface $event)') ===
     $contents = $insertBeforeClassEnd($contents, $beforeFilterBlock, $count);
     if ($count !== 1) {
         echo "ERROR - class closing brace not found for beforeFilter";
-        exit;
+        exit(1);
+    }
+    $updated = true;
+}
+
+if (strpos($contents, 'public function getUserId(') === false) {
+    $contents = $insertBeforeClassEnd($contents, $getUserIdBlock, $count);
+    if ($count !== 1) {
+        echo "ERROR - class closing brace not found for getUserId";
+        exit(1);
     }
     $updated = true;
 }
@@ -381,7 +427,7 @@ if (strpos($contents, 'public function setupCase(') === false) {
     $contents = $insertBeforeClassEnd($contents, $setupCaseBlock, $count);
     if ($count !== 1) {
         echo "ERROR - class closing brace not found for setupCase";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
@@ -390,7 +436,7 @@ if (strpos($contents, 'private function setupMenu()') === false) {
     $contents = $insertBeforeClassEnd($contents, $setupMenuBlock, $count);
     if ($count !== 1) {
         echo "ERROR - class closing brace not found for setupMenu";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
@@ -399,14 +445,14 @@ if (strpos($contents, 'public function writeToLog(') === false) {
     $contents = $insertBeforeClassEnd($contents, $writeToLogBlock, $count);
     if ($count !== 1) {
         echo "ERROR - class closing brace not found for writeToLog";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
 
 if (!$updated) {
     echo "AppController SetupCase wiring already exists — skipping<br/>";
-    exit;
+    return;
 }
 
 file_put_contents($appControllerFile, $contents);

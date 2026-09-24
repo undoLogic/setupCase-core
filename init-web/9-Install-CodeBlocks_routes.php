@@ -4,14 +4,14 @@ $routesFile = dirname(__DIR__) . '/sourceFiles/config/routes.php';
 
 if (!file_exists($routesFile)) {
     echo "ERROR - routes.php not found";
-    exit;
+    exit(1);
 }
 
 $contents = file_get_contents($routesFile);
 
 if ($contents === false) {
     echo "ERROR - Could not read routes.php";
-    exit;
+    exit(1);
 }
 
 $contents = str_replace(["\r\n", "\r"], "\n", $contents);
@@ -30,7 +30,7 @@ $rootRoutes = <<<'PHP'
             ['controller' => 'CodeBlocks', 'action' => 'download-csv'],
             ['language' => 'en|fr|es']
         );
-        
+
         // Login and Logout
         $builder->connect('/{language}/login', ['controller' => 'Users', 'action' => 'login']);
         $builder->connect('/{language}/logout', ['controller' => 'Users', 'action' => 'logout']);
@@ -41,14 +41,16 @@ $rootRoutes = <<<'PHP'
         $builder->connect('/{language}', ['controller' => 'Pages', 'action' => 'home'], ['language' => 'en|fr|es']);
         $builder->connect('/{language}/{controller}/{action}/*', [], ['language' => 'en|fr|es']);
         $builder->connect('/{language}/{controller}', ['action' => 'index'], ['language' => 'en|fr|es']);
+
+
 PHP;
 
-if (strpos($contents, "\$builder->connect('/login', ['controller' => 'Users', 'action' => 'login']);") === false) {
+if (strpos($contents, "\$builder->connect('/{language}/login', ['controller' => 'Users', 'action' => 'login']);") === false) {
     $needle = "        \$builder->fallbacks();\n";
     $contents = str_replace($needle, $rootRoutes . $needle, $contents, $count);
     if ($count !== 1) {
         echo "ERROR - root scope fallback anchor not found";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
@@ -71,14 +73,14 @@ $prefixBlock = <<<'PHP'
             $routes->setRouteClass(DashedRoute::class);
 
             $routes->connect(
-                '/:language/:controller',
+                '/{language}/{controller}',
                 ['action' => 'index']
             )->setPatterns([
                 'language' => 'en|fr|es'
             ]);
 
             $routes->connect(
-                '/:language/:controller/:action/*'
+                '/{language}/{controller}/{action}/*'
             )->setPatterns([
                 'language' => 'en|fr|es'
             ]);
@@ -94,14 +96,14 @@ if (strpos($contents, "foreach (['Staff', 'Admin', 'Manager'] as \$prefix)") ===
     $contents = str_replace($needle, $prefixBlock . $needle, $contents, $count);
     if ($count !== 1) {
         echo "ERROR - API comment anchor not found for prefix block";
-        exit;
+        exit(1);
     }
     $updated = true;
 }
 
 if (!$updated) {
     echo "Routes setup already exists — skipping<br/>";
-    exit;
+    return;
 }
 
 file_put_contents($routesFile, $contents);

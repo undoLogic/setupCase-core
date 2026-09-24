@@ -13,7 +13,8 @@ if (file_exists(dirname(__DIR__) . '/sourceFiles/webroot/css/bootstrap.min.css')
     $dirs = [
         $base . 'css/',
         $base . 'js/',
-        $base . 'icons/'
+        $base . 'icons/',
+        $base . 'icons/fonts/'
     ];
 
     foreach ($dirs as $dir) {
@@ -35,12 +36,15 @@ if (file_exists(dirname(__DIR__) . '/sourceFiles/webroot/css/bootstrap.min.css')
     foreach ($files as $local => $remote) {
         $target = $base . $local;
         $content = @file_get_contents($remote);
-        if ($content !== false) {
-            file_put_contents($target, $content);
-            echo "✅ Saved: $local<br/><br/>";
-        } else {
-            echo "❌ Failed: $remote<br/><br/>";
+        if ($content === false) {
+            echo "ERROR - Could not download: $remote<br/>";
+            exit(1);
         }
+        if (file_put_contents($target, $content) === false) {
+            echo "ERROR - Could not save: $local<br/>";
+            exit(1);
+        }
+        echo "✅ Saved: $local<br/><br/>";
     }
 /////////////////////////////////////////////////////////// end layout ///////////////////////
 
