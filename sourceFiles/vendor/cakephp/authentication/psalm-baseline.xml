@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="dev-master@">
+  <file src="src/Authenticator/AuthenticatorCollection.php">
+    <MoreSpecificImplementedParamType occurrences="1">
+      <code>$class</code>
+    </MoreSpecificImplementedParamType>
+  </file>
+  <file src="src/Identifier/IdentifierCollection.php">
+    <MoreSpecificImplementedParamType occurrences="1">
+      <code>$class</code>
+    </MoreSpecificImplementedParamType>
+  </file>
+  <file src="src/Identifier/Ldap/ExtensionAdapter.php">
+    <InvalidArgument occurrences="4">
+      <code>$this-&gt;_connection</code>
+      <code>$this-&gt;getConnection()</code>
+      <code>$this-&gt;getConnection()</code>
+      <code>$this-&gt;getConnection()</code>
+    </InvalidArgument>
+    <InvalidPropertyAssignmentValue occurrences="1">
+      <code>$resource</code>
+    </InvalidPropertyAssignmentValue>
+  </file>
+  <file src="src/Identity.php">
+    <LessSpecificImplementedReturnType occurrences="1">
+      <code>mixed</code>
+    </LessSpecificImplementedReturnType>
+  </file>
+  <file src="src/Middleware/AuthenticationMiddleware.php">
+    <PossiblyNullArgument occurrences="1">
+      <code>$result-&gt;getData()</code>
+    </PossiblyNullArgument>
+    <RedundantCast occurrences="1">
+      <code>(int)$e-&gt;getCode()</code>
+    </RedundantCast>
+  </file>
+  <file src="src/PasswordHasher/DefaultPasswordHasher.php">
+    <MoreSpecificImplementedParamType occurrences="2">
+      <code>$password</code>
+      <code>$password</code>
+    </MoreSpecificImplementedParamType>
+  </file>
+  <file src="src/PasswordHasher/FallbackPasswordHasher.php">
+    <MoreSpecificImplementedParamType occurrences="2">
+      <code>$password</code>
+      <code>$password</code>
+    </MoreSpecificImplementedParamType>
+  </file>
+  <file src="src/PasswordHasher/LegacyPasswordHasher.php">
+    <MoreSpecificImplementedParamType occurrences="2">
+      <code>$password</code>
+      <code>$password</code>
+    </MoreSpecificImplementedParamType>
+  </file>
+  <file src="src/UrlChecker/DefaultUrlChecker.php">
+    <NoInterfaceProperties occurrences="1">
+      <code>$uri-&gt;base</code>
+    </NoInterfaceProperties>
+  </file>
+</files>
