@@ -137,9 +137,9 @@ Found by comparing `codeBlocks/cakePHP/4.x/` against `sourceFiles/` on `testFlig
    - `src/Util/SetupCase.php`
 2. **Built feature not promoted.** The email queue / unified cron work (`docs/features/email-queue-feature.md`, `unified_cron_framework_and_monitoring.md`) lives in `sourceFiles/` but not in CodeBlocks: `src/Command/CronCommand.php`, `src/Service/CronService.php`, `src/Controller/Staff/EmailQueuesController.php`, `src/Model/Table/EmailQueuesTable.php`, `src/Model/Table/EmailQueueAttachmentsTable.php`, `config/schema/2026-09-08.sql`. A new project built today would not get it.
 3. **`8-Save-CodeBlocks.php` references files that don't exist** in `sourceFiles/` (e.g. `AuditLogsTable.php`, `AuditContext.php`, `MenuStateHelper.php`, `Staff/AuditLogsController.php`, non-prefixed/Manager `EmailQueuesController.php`). The list is out of date with reality.
-4. **Two reverse-sync scripts** (`8-Save-CodeBlocks.php`, `codeBlocks/import_new_changes.sh`) with different lists. There should be one.
-5. **No schema path in the build.** `codeBlocks/cakePHP/4.x/` has no `config/schema/`, and no build step applies SQL. Features that need tables cannot be fully built deterministically yet.
-6. **CI step expects a missing folder.** `9-install-CodeBlocks_citesting.php` requires `codeBlocks/.github`, which does not exist, and exits `1` - so a fresh `1-Install.php` run is expected to end in "Script failed" after all other steps succeed. (Read from code; not yet executed.)
+4. **Two reverse-sync scripts** (`8-Save-CodeBlocks.php`, `codeBlocks/import_new_changes.sh`) with different lists. There should be one. -> Decision 1.
+5. **No schema path in the build.** `codeBlocks/cakePHP/4.x/` has no `config/schema/`, and no build step applies SQL. Features that need tables cannot be fully built deterministically yet. -> Decision 3.
+6. **CI step expects a missing folder.** `9-install-CodeBlocks_citesting.php` requires `codeBlocks/.github`, which does not exist, and exits `1` - so a fresh `1-Install.php` run is expected to end in "Script failed" after all other steps succeed. (Read from code; not yet executed.) -> Decision 4.
 7. **`exit` inside included transforms.** The `9-*` files are `include_once`-d by `2-Install-CodeBlocks.php`. Any bare `exit` (error path *or* the "already exists - skipping" path, e.g. in `9-Install-CodeBlocks_app.php`) stops every later transform, and error paths use `exit` with code `0`, so `1-Install.php` can report success on a partial install.
 8. **No changelog, no last-sync marker.**
 9. **Docs vs. code naming.** Earlier drafts of this doc used `CodeBlocks/CakePHP/4.x/`; the repo uses `codeBlocks/cakePHP/4.x/`. The repo names are authoritative (see "Don't Rename Working Infrastructure").
@@ -156,8 +156,8 @@ Target layout for CakePHP 4.x (additions marked `+`):
 codeBlocks/
 └── cakePHP/
     └── 4.x/
-        ├── README.md
-        ├── changelog-2026.md        +
+        ├── README.md                   not synced
+        ├── changeLog.md             +  not synced
         ├── config/
         │   └── schema/              +  dated SQL files, same convention as sourceFiles/config/schema
         ├── src/
@@ -171,7 +171,16 @@ codeBlocks/
 
 ## Where Build Scripts Live
 
-Today the web build scripts live in `init-web/` and are version-specific in practice (they hardcode `codeBlocks/cakePHP/4.x`). Keep `init-web/` as the stable browser entry point. Moving the `9-*` transforms under `codeBlocks/cakePHP/4.x/scripts/` is optional and only worth doing when a second CakePHP version exists (see Open Decisions).
+**Decided (2026-09-24):** the `9-*` transforms stay in `init-web/`. Revisit when the CakePHP 5.x upgrade starts.
+
+Reasoning:
+
+- `codeBlocks/cakePHP/4.x/` stays a pure payload: everything in it is synced into `sourceFiles/`. That keeps the build rsync, reverse sync (tree-as-manifest) and drift report simple, with no exclude lists to keep in step.
+- With only one CakePHP version, co-locating scripts with their version adds path changes and excludes for no current benefit.
+
+When 5.x arrives, version the transforms without putting them inside the payload folder, e.g. `init-web/cakePHP-4.x/` or a sibling `codeBlocks/cakePHP/4.x-init/`. The same applies to `2-Install-Cake.php` (hardcodes `cakephp/app:^4.0`).
+
+Related: the rsync already copies `codeBlocks/cakePHP/4.x/README.md` over CakePHP's `sourceFiles/README.md`. `changeLog.md` would be copied too, so the build rsync must exclude `README.md` and `changeLog.md` (decided: both stay inside `4.x/` so each CakePHP version has its own).
 
 ---
 
@@ -195,7 +204,7 @@ Rule: **a file is either fully owned by CodeBlocks (synced) or owned by the fram
 
 ## Deterministic Transforms
 
-Rules every `9-*` transform must follow:
+Rules every `init-web/9-*` transform must follow:
 
 - **Idempotent.** Detect a marker and skip that edit; running the build twice produces the same result.
 - **Anchor or fail.** Insert at a known anchor; if the anchor is missing, fail loudly.
@@ -205,7 +214,30 @@ Rules every `9-*` transform must follow:
 
 ## Schema
 
-Features that need tables ship their SQL in `codeBlocks/cakePHP/4.x/config/schema/YYYY-MM-DD.sql`, synced into `sourceFiles/config/schema/`. How and when the SQL is applied on a new project is an Open Decision; until decided, applying schema is a documented manual step in the build.
+Features that need tables ship their SQL in `codeBlocks/cakePHP/4.x/config/schema/YYYY-MM-DD.sql`, synced into `sourceFiles/config/schema/` (same dated convention as `AGENTS.md`).
+
+**Decided (2026-09-24):** a new `init-web` step applies the schema, run by `1-Install.php` after `2-Install-CodeBlocks.php`.
+
+- Applies `sourceFiles/config/schema/*.sql` in filename (date) order.
+- Connects using the same config the app uses (`DATABASE_DEFAULT_URL`, set by the Docker compose files).
+- Each file is applied **once**: applied filenames are recorded in a small tracking table and skipped on later runs. Needed because builds can be re-run (see "Re-running on Existing Projects") and dated files may contain `ALTER TABLE`, which cannot safely run twice. Existing files such as `2026-09-08.sql` use plain `CREATE TABLE`.
+- Stops with a non-zero exit code on the first failing file, naming it.
+- Legacy non-dated files (`i18n.sql`, `sessions.sql`) are out of scope unless promoted as dated files.
+
+## Re-running on Existing Projects
+
+**Decided (2026-09-24):** SetupCase is a developer tool, so re-applying newer CodeBlocks to an existing project is allowed and not restricted.
+
+Procedure:
+
+1. Pull the latest factory folders (`install_setupCaseCore_modules.sh`, or manually).
+2. Run `init-web/1-Install.php`. `2-Install-Cake.php` skips because `sourceFiles/` exists; CodeBlocks sync, transforms and schema step run.
+
+Consequences:
+
+- Synced files are overwritten with the CodeBlocks version. Project-local edits to CodeBlocks-owned files are lost unless they were first promoted with `Update CodeBlocks`. This is intended: CodeBlocks-owned files are edited upstream.
+- Transforms and the schema step must be safe to re-run (see rules above).
+- Review the result with `git diff` in the project before committing.
 
 ---
 
@@ -238,7 +270,7 @@ testFlight: sourceFiles built by factory
    |  build feature, feature file, verify on TestFlight
    v
 "Update CodeBlocks" on testFlight  (factory-only commit)
-   |  codeBlocks/, init-web/ transforms, schema, changelog, docs
+   |  codeBlocks/ (files, schema, changelog), init-web/ transforms, docs
    v
 Rebuild check: fresh 1-Install.php reproduces the feature
    |
@@ -273,7 +305,7 @@ Before doing anything, confirm `codeBlocks/cakePHP/4.x/` exists. If it doesn't, 
 
 ## Establish the Boundary
 
-1. Read the latest `codeBlocks/cakePHP/4.x/changelog-YYYY.md` entry and its `Source commit`.
+1. Read the latest entry in `codeBlocks/cakePHP/4.x/changeLog.md` and its `Source commit`.
 2. Evidence set = `git log <source-commit>..HEAD -- sourceFiles/` plus the diffs.
 3. If no changelog exists yet (first run), use the drift report below as the boundary.
 
@@ -286,8 +318,15 @@ Before deciding anything, produce a report with three lists:
 | `DIFFERS` | File exists in CodeBlocks and `sourceFiles/`, contents differ | Review diff; copy back if the change is reusable |
 | `MISSING-IN-SOURCE` | File exists in CodeBlocks but not in `sourceFiles/` | Investigate (deleted? renamed? never installed?) |
 | `CANDIDATE` | File changed/added in `sourceFiles/` in the evidence set, not in CodeBlocks | Decide: promote as sync, promote as transform, or exclude |
+| `SAVE-LIST-DEAD` | Entry in `8-Save-CodeBlocks.php` whose source or target does not exist | Remove or fix the entry |
+| `SAVE-LIST-MISSING` | Synced file in CodeBlocks not covered by any `8-Save-CodeBlocks.php` entry | Add an entry (or remove the file from CodeBlocks) |
 
-The report is a script, not an AI judgement, so it can be re-run to confirm the result.
+**Decided (2026-09-24):** the drift report is a CLI script (proposed: `codeBlocks/drift-report.sh`), not an `init-web` page.
+
+- Plain-text output, so the developer and the AI tool see the same result.
+- Needs only `bash`, `git` and `cmp`; runs on the host or inside Docker, with or without the stack running.
+- Read-only; never copies or edits files.
+- It is a script, not an AI judgement, so it can be re-run to confirm the result.
 
 ## AI Responsibilities
 
@@ -296,13 +335,14 @@ The report is a script, not an AI judgement, so it can be re-run to confirm the 
 3. Group related commits and files into logical features.
 4. For each feature, classify every file:
    - **sync** - SetupCase-owned file, copy into `codeBlocks/cakePHP/4.x/`
-   - **transform** - change to a framework-owned file, add/extend a `9-*` script
+   - **transform** - change to a framework-owned file, add/extend an `init-web/9-*` script
    - **schema** - dated SQL into `codeBlocks/cakePHP/4.x/config/schema/`
    - **exclude** - project-specific or TestFlight-only; say why
 5. Apply the changes (factory paths only).
-6. Update `changelog-YYYY.md` with a grouped entry and the source commit.
-7. Update `codeBlocks/cakePHP/4.x/README.md` / feature files if behaviour or procedure changed.
-8. Report: what was promoted, as what, what was excluded and why, and whether the rebuild check ran.
+6. Update `init-web/8-Save-CodeBlocks.php`: add every newly promoted synced file/folder, remove entries whose source no longer exists.
+7. Add a grouped entry to `codeBlocks/cakePHP/4.x/changeLog.md` with the source commit.
+8. Update `codeBlocks/cakePHP/4.x/README.md` / feature files if behaviour or procedure changed.
+9. Report: what was promoted, as what, what was excluded and why, and whether the rebuild check ran.
 
 AI must not blindly copy every changed file into CodeBlocks. Do not `git add` / `git commit` unless explicitly asked (see `AGENTS.md`).
 
@@ -311,7 +351,7 @@ AI must not blindly copy every changed file into CodeBlocks. Do not `git add` / 
 A promotion is only proven when a fresh build reproduces it:
 
 1. Move `sourceFiles/` aside (don't delete it).
-2. Run `init-web/1-Install.php` (and the schema step, while manual).
+2. Run `init-web/1-Install.php` (includes the schema step) against an empty database.
 3. For every file under `codeBlocks/cakePHP/4.x/`, the new `sourceFiles/` copy must be identical.
 4. For each transformed framework file, the new output must contain the promoted change.
 5. The promoted feature works in the rebuilt app.
@@ -330,7 +370,7 @@ Git history is evidence of the development sequence, but **commit boundaries do 
 
 # Changelog
 
-Each platform/version keeps a yearly changelog: `codeBlocks/cakePHP/4.x/changelog-YYYY.md`. Start a new file each calendar year; never rewrite old ones.
+**Decided (2026-09-24):** each platform/version keeps one changelog: `codeBlocks/cakePHP/4.x/changeLog.md`. A future CakePHP 5.x gets its own `codeBlocks/cakePHP/5.x/changeLog.md`. Newest entry at the top; existing entries are never rewritten. Not synced into `sourceFiles/`.
 
 ## Grouping
 
@@ -392,8 +432,9 @@ When the user asks to `Update CodeBlocks`, follow
 `docs/features/SetupCase-Core-Platform-Build-and-CodeBlocks-Workflow.md`:
 
 - Stop if `codeBlocks/cakePHP/4.x/` does not exist.
-- Boundary = `Source commit` in the latest `changelog-YYYY.md`.
+- Boundary = `Source commit` in the latest entry of `codeBlocks/cakePHP/4.x/changeLog.md`.
 - Run the drift report first; classify each change as sync / transform / schema / exclude.
+- Keep the `init-web/8-Save-CodeBlocks.php` list in step with what was promoted.
 - Only touch factory paths (`codeBlocks/`, `init-web/`, `docs/`); never commit `sourceFiles/` to `main`.
 - One changelog entry per logical feature, dated from Git.
 - New-project creation must remain deterministic and AI-free.
@@ -419,17 +460,21 @@ Deterministic project creation
 
 ---
 
-# Open Decisions
+# Decisions
 
-To be settled with the project owner as we work through this; record the decision here when made.
+All decided 2026-09-24 by the project owner.
 
-1. **Reverse-sync tool.** Replace `8-Save-CodeBlocks.php` + `codeBlocks/import_new_changes.sh` with one tool. Proposal: the CodeBlocks tree itself is the manifest (anything already in `codeBlocks/cakePHP/4.x/` is copied back from `sourceFiles/`); new files are added deliberately during `Update CodeBlocks`. Removes the hardcoded lists that have drifted.
-2. **Drift report form.** CLI script (bash/PHP) runnable in and out of Docker, vs. an `init-web/` page. Proposal: CLI script, so AI and humans get the same output.
-3. **Schema application.** Manual step, `init-web` step that runs dated SQL, or CakePHP Migrations.
-4. **CI files.** Create `codeBlocks/.github/` or make `9-install-CodeBlocks_citesting.php` optional.
-5. MOVE to codeblocks/cakePHP/4.x/init-scripts/ => **Transform location.** Keep `init-web/9-*`, or move under `codeBlocks/cakePHP/4.x/scripts/`.
-6. **Updating existing projects.** Whether a project created earlier can re-apply newer CodeBlocks into its own `sourceFiles/`, or only new projects benefit.
-7. **First promotion.** Use the email queue / cron feature as the pilot run of this workflow.
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Reverse-sync tool | `init-web/8-Save-CodeBlocks.php` is the current tool and is kept. `codeBlocks/import_new_changes.sh` is old; merge anything still valid from it into 8-Save, then remove it. 8-Save keeps an explicit list, maintained by AI during `Update CodeBlocks` and evolving over time; the drift report checks the list. |
+| 2 | Drift report form | CLI script. See "Drift Report". |
+| 3 | Schema application | `init-web` step that applies dated SQL, once per file. See "Schema". |
+| 4 | CI files | Optional. Not every project uses CI; `9-install-CodeBlocks_citesting.php` must skip cleanly (exit 0, message) when `codeBlocks/.github/` is absent. |
+| 5 | Transform location | Keep `init-web/9-*`; revisit at the CakePHP 5.x upgrade. See "Where Build Scripts Live". |
+| 6 | Updating existing projects | Allowed, unrestricted (developer tool). See "Re-running on Existing Projects". |
+| 7 | First promotion | Email queue / cron feature is the pilot run of this workflow. |
+
+| 8 | Changelog | One file per version: `codeBlocks/cakePHP/4.x/changeLog.md`, excluded from the build rsync along with `README.md`. |
 
 ---
 
@@ -441,6 +486,7 @@ To be settled with the project owner as we work through this; record the decisio
 
 **Surfaces:**
 - `init-web/1-Install.php`, `2-Install-Cake.php`, `2-Install-CodeBlocks.php`
+- `init-web` schema step
 - `init-web/9-*` transforms
 - `codeBlocks/cakePHP/4.x/`
 - `sourceFiles/`
@@ -448,12 +494,17 @@ To be settled with the project owner as we work through this; record the decisio
 ### Scenarios
 
 - [ ] From `main` with no `sourceFiles/`, `1-Install.php` completes with exit code 0 and opens CodeBlocks.
-- [ ] Every file under `codeBlocks/cakePHP/4.x/` is present and identical in the generated `sourceFiles/`.
+- [ ] Every synced file under `codeBlocks/cakePHP/4.x/` is present and identical in the generated `sourceFiles/`.
+- [ ] `README.md` and `changeLog.md` from `codeBlocks/cakePHP/4.x/` are not copied into `sourceFiles/`.
 - [ ] Each transform inserts its change once at the expected anchor.
 - [ ] Running the build a second time changes no files.
 - [ ] A transform whose anchor is missing stops the build with a non-zero exit code.
 - [ ] A transform that skips (already applied) does not prevent later transforms from running.
 - [ ] Schema files for promoted features are present in `sourceFiles/config/schema/` after build.
+- [ ] The schema step applies dated SQL files in date order to an empty database.
+- [ ] Re-running the schema step skips files already applied.
+- [ ] A failing SQL file stops the build with a non-zero exit code and names the file.
+- [ ] Without `codeBlocks/.github/`, the CI step skips with a message and the build still succeeds.
 
 ## Update CodeBlocks
 
@@ -461,8 +512,9 @@ To be settled with the project owner as we work through this; record the decisio
 
 **Surfaces:**
 - Git history on `testFlight`
-- drift report script
-- `codeBlocks/cakePHP/4.x/` and its `changelog-YYYY.md` / `README.md`
+- `codeBlocks/drift-report.sh`
+- `init-web/8-Save-CodeBlocks.php`
+- `codeBlocks/cakePHP/4.x/` and its `changeLog.md` / `README.md`
 - `init-web/9-*` transforms
 - `docs/features/`
 
@@ -475,7 +527,10 @@ To be settled with the project owner as we work through this; record the decisio
 - [ ] Each promoted file is classified as sync, transform, schema, or exclude, with a reason for excludes.
 - [ ] Changes to framework-owned files are promoted as transforms, not synced copies.
 - [ ] Only factory paths are modified; `sourceFiles/` is never promoted to `main`.
-- [ ] Historical changelog files are unchanged.
+- [ ] Existing changelog entries are unchanged; new entries are added at the top.
+- [ ] `8-Save-CodeBlocks.php` only references files that exist, and `codeBlocks/import_new_changes.sh` is removed.
+- [ ] Newly promoted synced files are added to the `8-Save-CodeBlocks.php` list in the same promotion.
+- [ ] The drift report flags dead `8-Save` entries and synced CodeBlocks files missing from the list.
 - [ ] After promotion, the rebuild check reproduces the feature in a fresh build.
 
 ## Promotion to Main
@@ -493,6 +548,21 @@ To be settled with the project owner as we work through this; record the decisio
 - [ ] `main` still contains no `sourceFiles/`.
 - [ ] A project created from the template after promotion includes the feature after `1-Install.php`.
 
+## Re-running on Existing Projects
+
+**Intent:** An existing project can pick up newer CodeBlocks by re-running the build.
+
+**Surfaces:**
+- `install_setupCaseCore_modules.sh`
+- `init-web/1-Install.php`
+
+### Scenarios
+
+- [ ] With `sourceFiles/` present, `1-Install.php` skips the CakePHP install and re-applies CodeBlocks, transforms and schema.
+- [ ] CodeBlocks-owned files are updated to the latest CodeBlocks version.
+- [ ] Transforms already applied are not duplicated.
+- [ ] Only schema files not yet applied are run.
+
 ---
 
 # Completion Criteria
@@ -500,10 +570,12 @@ To be settled with the project owner as we work through this; record the decisio
 This workflow is established when:
 
 - the Known Gaps above are closed or explicitly accepted
-- one reverse-sync tool exists and the hardcoded lists are gone
-- the drift report exists and is documented
+- `8-Save-CodeBlocks.php` is the only reverse-sync tool, its list covers every synced CodeBlocks file, and it references only existing files
+- the drift report script exists and is documented
+- the schema step exists and the CI step is optional
+- the email queue / cron feature has been promoted as the pilot
 - `codeBlocks/cakePHP/4.x/README.md` describes the system
-- `codeBlocks/cakePHP/4.x/changelog-2026.md` exists with at least one promoted feature and source commit
+- `codeBlocks/cakePHP/4.x/changeLog.md` exists with at least one promoted feature and source commit
 - the rebuild check has been run successfully for that feature
 - `AGENTS.md` contains the concise Update CodeBlocks pointer
 - new-project initialization remains fully deterministic
