@@ -279,7 +279,7 @@ class UsersController extends AppController
 
                 $sent = SetupCase::sendEmail($emailSubmitted, 'email_reset','support@domain.com', 'Email Password Reset', $vars);
 
-                if ($sent === true) {
+                if ($sent) {
                     $this->set('email_sent', true);
                     $this->writeToLog('debug', 'email sent !');
                 } else {

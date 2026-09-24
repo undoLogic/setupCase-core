@@ -231,6 +231,11 @@ class CurlDownloader
             curl_setopt($curlHandle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
         }
 
+        if ($attributes['retries'] > 0) {
+            // when retrying, do not re-use a kept-alive connection from the pool as it may be the cause of the failure
+            curl_setopt($curlHandle, CURLOPT_FRESH_CONNECT, true);
+        }
+
         if (function_exists('curl_share_init')) {
             curl_setopt($curlHandle, CURLOPT_SHARE, $this->shareHandle);
         }
@@ -427,7 +432,7 @@ class CurlDownloader
                         // Gzipped responses with missing Content-Length header cannot be detected during the file download
                         // because $progress['size_download'] refers to the gzipped size downloaded, not the actual file size
                         if ($contents !== false && Platform::strlen($contents) >= $maxFileSize) {
-                            throw new MaxFileSizeExceededException('Maximum allowed download size reached. Downloaded ' . Platform::strlen($contents) . ' of allowed ' .  $maxFileSize . ' bytes');
+                            throw new MaxFileSizeExceededException('Maximum allowed download size reached. Downloaded ' . Platform::strlen($contents) . ' of allowed ' .  $maxFileSize . ' bytes for ' . Url::sanitize($job['url']));
                         }
                     } else {
                         $contents = stream_get_contents($job['bodyHandle']);
@@ -460,9 +465,12 @@ class CurlDownloader
 
                 // fail 4xx and 5xx responses and capture the response
                 if ($statusCode >= 400 && $statusCode <= 599) {
+                    $retryableStatusCode = in_array($statusCode, [423, 425, 500, 502, 503, 504, 507, 510], true)
+                        // codeload.github.com intermittently returns 400 on reused connections, retry those specifically, see #12958
+                        || ($statusCode === 400 && parse_url($job['url'], PHP_URL_HOST) === 'codeload.github.com');
                     if (
                         (!isset($job['options']['http']['method']) || $job['options']['http']['method'] === 'GET')
-                        && in_array($statusCode, [423, 425, 500, 502, 503, 504, 507, 510], true)
+                        && $retryableStatusCode
                         && $job['attributes']['retries'] < $this->maxRetries
                     ) {
                         $this->io->writeError('Retrying ('.($job['attributes']['retries'] + 1).') ' . Url::sanitize($job['url']) . ' due to status code '. $statusCode, true, IOInterface::DEBUG);
@@ -510,12 +518,12 @@ class CurlDownloader
                 if (isset($this->jobs[$i]['options']['max_file_size'])) {
                     // Compare max_file_size with the content-length header this value will be -1 until the header is parsed
                     if ($this->jobs[$i]['options']['max_file_size'] < $progress['download_content_length']) {
-                        $this->rejectJob($this->jobs[$i], new MaxFileSizeExceededException('Maximum allowed download size reached. Content-length header indicates ' . $progress['download_content_length'] . ' bytes. Allowed ' .  $this->jobs[$i]['options']['max_file_size'] . ' bytes'));
+                        $this->rejectJob($this->jobs[$i], new MaxFileSizeExceededException('Maximum allowed download size reached. Content-length header indicates ' . $progress['download_content_length'] . ' bytes. Allowed ' .  $this->jobs[$i]['options']['max_file_size'] . ' bytes for ' . Url::sanitize($this->jobs[$i]['url'])));
                     }
 
                     // Compare max_file_size with the download size in bytes
                     if ($this->jobs[$i]['options']['max_file_size'] < $progress['size_download']) {
-                        $this->rejectJob($this->jobs[$i], new MaxFileSizeExceededException('Maximum allowed download size reached. Downloaded ' . $progress['size_download'] . ' of allowed ' .  $this->jobs[$i]['options']['max_file_size'] . ' bytes'));
+                        $this->rejectJob($this->jobs[$i], new MaxFileSizeExceededException('Maximum allowed download size reached. Downloaded ' . $progress['size_download'] . ' of allowed ' .  $this->jobs[$i]['options']['max_file_size'] . ' bytes for ' . Url::sanitize($this->jobs[$i]['url'])));
                     }
                 }
 
@@ -562,6 +570,10 @@ class CurlDownloader
         }
 
         if (!empty($targetUrl)) {
+            if (!Url::isAllowedRedirect($targetUrl)) {
+                throw new TransportException('Could not follow the redirect to "'.Url::sanitize($targetUrl).'" because only http and https redirects are supported.');
+            }
+
             $this->io->writeError(sprintf('Following redirect (%u) %s', $job['attributes']['redirects'] + 1, Url::sanitize($targetUrl)), true, IOInterface::DEBUG);
 
             return $targetUrl;

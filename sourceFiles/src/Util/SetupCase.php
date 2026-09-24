@@ -282,9 +282,6 @@ class SetupCase {
     }
 
 
-    /**
-     * @return bool|string true on success, the caught exception message on failure
-     */
     public static function sendEmail(
         $to,
         $template,
@@ -293,7 +290,7 @@ class SetupCase {
         array $vars,
         $cc = false,
         array $attachments = []
-    ) {
+    ): bool {
         try {
             $mailer = new Mailer('default');
             $env = Configure::read('App.current_env_profile');
@@ -340,7 +337,7 @@ class SetupCase {
                 'error' => $e->getMessage(),
             ]);
 
-            return $e->getMessage();
+            return false;
         }
     }
 

@@ -62,15 +62,6 @@ class AppController extends Controller
         $this->setupMenu();
     }
 
-    public function getUserId()
-    {
-        if (isset($this->request->getAttribute('identity')['id'])) {
-            return $this->request->getAttribute('identity')['id'];
-        }
-
-        return false;
-    }
-
     public function setupCase()
     {
         $setupCase = new SetupCase();
@@ -126,43 +117,11 @@ class AppController extends Controller
                         ],
                     ],
                     [
-                        'name' => 'AGENTS.md',
-                        'link' => [
-                            'prefix' => false,
-                            'controller' => 'CodeBlocks',
-                            'action' => 'agents',
-                        ],
-                    ],
-                    [
-                        'name' => 'Email Queues',
-                        'link' => [
-                            'prefix' => false,
-                            'controller' => 'CodeBlocks',
-                            'action' => 'emailQueues',
-                        ],
-                    ],
-                    [
-                        'name' => 'Intergration Testing',
-                        'link' => [
-                            'prefix' => false,
-                            'controller' => 'CodeBlocks',
-                            'action' => 'intergrationTesting',
-                        ],
-                    ],
-                    [
                         'name' => 'Responsive Table',
                         'link' => [
                             'prefix' => false,
                             'controller' => 'CodeBlocks',
                             'action' => 'responsiveTable',
-                        ],
-                    ],
-                    [
-                        'name' => 'Unified Cron Framework',
-                        'link' => [
-                            'prefix' => false,
-                            'controller' => 'CodeBlocks',
-                            'action' => 'unifiedCronFrameworkAndMonitoring',
                         ],
                     ],
                     [
@@ -267,7 +226,7 @@ class AppController extends Controller
                         ],
                     ],
                     [
-                        'name' => 'Email Queues',
+                        'name' => 'Automated Emailers',
                         'link' => [
                             'prefix' => 'Staff',
                             'controller' => 'EmailQueues',

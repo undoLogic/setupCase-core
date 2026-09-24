@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Service\CronService;
 use App\Util\SetupFiles;
 use Cake\Controller\Controller;
 
@@ -53,34 +52,7 @@ class SetupPagesController extends AppController
         parent::beforeFilter($event);
         $this->objectStorages = TableRegistry::getTableLocator()->get('ObjectStorages');
 
-
-        if ($this->request->getParam('action') === 'cronStatus') {
-            $this->Authentication->addUnauthenticatedActions(['cronStatus']);
-            return;
-        }
-
-
-
     }
-
-
-    public function cronStatus(): Response
-    {
-        $response = (new CronService())->status();
-
-        $json = json_encode($response, JSON_PRETTY_PRINT);
-        if ($json === false) {
-            $json = '{"STATUS":500,"MSG":"Unable to encode cron status."}';
-        }
-
-        return $this->response
-            ->withStatus((int)$response['STATUS'])
-            ->withType('application/json')
-            ->withStringBody($json);
-    }
-
-
-
 
     var $objectStorages;
 
@@ -446,11 +418,5 @@ class SetupPagesController extends AppController
 
 
     }
-
-
-
-
-
-
 
 }
