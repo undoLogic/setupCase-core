@@ -9,26 +9,20 @@ $rootDir = dirname(__DIR__);
 $dirs = [
     //Controllers
     $rootDir . '/sourceFiles/src/Controller/CodeBlocksController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/CodeBlocksController.php',
-    $rootDir . '/sourceFiles/src/Controller/EmailQueuesController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/EmailQueuesController.php',
     $rootDir . '/sourceFiles/src/Controller/UsersController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/UsersController.php',
     $rootDir . '/sourceFiles/src/Controller/SetupPagesController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/SetupPagesController.php',
     $rootDir . '/sourceFiles/src/Controller/Staff/CodeBlocksController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/Staff/CodeBlocksController.php',
     $rootDir . '/sourceFiles/src/Controller/Staff/EmailQueuesController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/Staff/EmailQueuesController.php',
-    $rootDir . '/sourceFiles/src/Controller/Staff/AuditLogsController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/Staff/AuditLogsController.php',
     $rootDir . '/sourceFiles/src/Controller/Manager/CodeBlocksController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/Manager/CodeBlocksController.php',
-    $rootDir . '/sourceFiles/src/Controller/Manager/EmailQueuesController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/Manager/EmailQueuesController.php',
 
     //Templates
     $rootDir . '/sourceFiles/templates/CodeBlocks/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/CodeBlocks',
-    $rootDir . '/sourceFiles/templates/EmailQueues/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/EmailQueues',
     $rootDir . '/sourceFiles/templates/Staff/CodeBlocks/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Staff/CodeBlocks',
     $rootDir . '/sourceFiles/templates/Staff/EmailQueues/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Staff/EmailQueues',
-    $rootDir . '/sourceFiles/templates/Staff/AuditLogs/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Staff/AuditLogs',
     $rootDir . '/sourceFiles/templates/Manager/CodeBlocks/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Manager/CodeBlocks',
 
     //Models
     $rootDir . '/sourceFiles/src/Model/Table/CodeBlocksTable.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Table/CodeBlocksTable.php',
-    $rootDir . '/sourceFiles/src/Model/Table/AuditLogsTable.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Table/AuditLogsTable.php',
     $rootDir . '/sourceFiles/src/Model/Table/EmailQueuesTable.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Table/EmailQueuesTable.php',
     $rootDir . '/sourceFiles/src/Model/Table/EmailQueueAttachmentsTable.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Table/EmailQueueAttachmentsTable.php',
     $rootDir . '/sourceFiles/src/Model/Behavior/.' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Behavior',
@@ -51,12 +45,13 @@ $dirs = [
     //Schema
     $rootDir . '/sourceFiles/config/schema/2026-09-08.sql' => $rootDir . '/codeBlocks/cakePHP/4.x/config/schema/2026-09-08.sql',
 
+    //Config
+    $rootDir . '/sourceFiles/config/app_DEV.php' => $rootDir . '/codeBlocks/cakePHP/4.x/config/app_DEV.php',
+
     //Util
-    $rootDir . '/sourceFiles/src/Util/AuditContext.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Util/AuditContext.php',
     $rootDir . '/sourceFiles/src/Util/SetupCase.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Util/SetupCase.php',
 
     //View helpers
-    $rootDir . '/sourceFiles/src/View/Helper/MenuStateHelper.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/View/Helper/MenuStateHelper.php',
 ];
 
 foreach ($dirs as $src => $dst) {

@@ -138,7 +138,7 @@ Found by comparing `codeBlocks/cakePHP/4.x/` against `sourceFiles/` on `testFlig
 
    The 2026-09-24 rebuild also showed missing from CodeBlocks: `config/cron.php`, `webroot/cron.php`, `templates/element/2026/`, and the CodeBlocks demo pages `agents`, `email_queues`, `intergration_testing`, `passwordless_email_login`, `unified_cron_framework_and_monitoring`.
 2. **Built feature not promoted.** The email queue / unified cron work (`docs/features/email-queue-feature.md`, `unified_cron_framework_and_monitoring.md`) lives in `sourceFiles/` but not in CodeBlocks: `src/Command/CronCommand.php`, `src/Service/CronService.php`, `src/Controller/Staff/EmailQueuesController.php`, `src/Model/Table/EmailQueuesTable.php`, `src/Model/Table/EmailQueueAttachmentsTable.php`, `config/schema/2026-09-08.sql`. A new project built today would not get it. **Promoted 2026-09-24** (see `codeBlocks/cakePHP/4.x/changeLog.md`); a fresh rebuild now matches old TestFlight except for intentional differences (dropped Integration Testing / Passwordless pages, `AGENTS-copy.md` now current, CakePHP `README.md`).
-3. **`8-Save-CodeBlocks.php` references files that don't exist** in `sourceFiles/` (e.g. `AuditLogsTable.php`, `AuditContext.php`, `MenuStateHelper.php`, `Staff/AuditLogsController.php`, non-prefixed/Manager `EmailQueuesController.php`). The list is out of date with reality.
+3. **`8-Save-CodeBlocks.php` references files that don't exist** in `sourceFiles/` (e.g. `AuditLogsTable.php`, `AuditContext.php`, `MenuStateHelper.php`, `Staff/AuditLogsController.php`, non-prefixed/Manager `EmailQueuesController.php`). The list is out of date with reality. **Fixed 2026-09-24:** the 8 dead entries were removed during the first `Update CodeBlocks` run. Still open: 48 synced CodeBlocks files are not covered by any entry (merge from `import_new_changes.sh`, Decision 1).
 4. **Two reverse-sync scripts** (`8-Save-CodeBlocks.php`, `codeBlocks/import_new_changes.sh`) with different lists. There should be one. -> Decision 1.
 5. **No schema path in the build.** `codeBlocks/cakePHP/4.x/` has no `config/schema/`, and no build step applies SQL. Features that need tables cannot be fully built deterministically yet. -> Decision 3.
 6. **CI step expects a missing folder.** `9-install-CodeBlocks_citesting.php` requires `codeBlocks/.github`, which does not exist, and exits `1` - so a fresh `1-Install.php` run is expected to end in "Script failed" after all other steps succeed. Confirmed by the 2026-09-24 rebuild. -> Decision 4. **Fixed 2026-09-24:** skips with a message when the folder is absent.
@@ -368,7 +368,11 @@ AI must not blindly copy every changed file into CodeBlocks. Do not `git add` / 
 
 ## Rebuild Check
 
-A promotion is only proven when a fresh build reproduces it:
+A promotion is only proven when a fresh build reproduces it.
+
+Preferred (non-destructive, used 2026-09-24): copy `codeBlocks/`, `init-web/` and `AGENTS.md` into a temporary folder inside the repo (e.g. `.rebuild-check/`, so Docker can see it), run `php init-web/1-Install.php` there inside the container as `www-data`, compare its `sourceFiles/` with the real one (ignoring `vendor/`, `tmp/`, `logs/`, `composer.lock`, `config/app_local.php`), then delete the folder.
+
+Alternative (in place):
 
 1. Move `sourceFiles/` aside (don't delete it).
 2. Run `init-web/1-Install.php` (includes the schema step) against an empty database.

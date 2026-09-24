@@ -6,6 +6,25 @@ See `docs/features/SetupCase-Core-Platform-Build-and-CodeBlocks-Workflow.md`.
 
 ---
 
+## 2026-09-24 - ENV Vars: Server First
+
+Config values are read from the server `php.ini` first (prod), then the Docker environment (local), then a default: `get_cfg_var('X') ?: env('Y') ?: 'default'`.
+
+- Source commit: `07e97f3c`
+
+### Included
+
+- sync: `config/app_DEV.php` - database URLs use the server-first fallback
+- sync: `templates/CodeBlocks/env_vars.php`, `CodeBlocksController::envVars()` subtitle - page documents the pattern
+
+---
+
+## 2026-09-24 - New testFlight Baseline
+
+`testFlight` was recreated from `main` and rebuilt with `init-web/1-Install.php`. Baseline build commit: `6879651c`. Source commits in older entries (`89cff894`) are on branch `testFlight-archive-2026-09-24`.
+
+---
+
 ## 2026-09-24 - Build Script Hardening
 
 Made `init-web/1-Install.php` finish cleanly on a fresh build and safe to re-run.
