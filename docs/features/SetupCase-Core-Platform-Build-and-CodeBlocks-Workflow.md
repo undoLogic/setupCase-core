@@ -135,14 +135,30 @@ Found by comparing `codeBlocks/cakePHP/4.x/` against `sourceFiles/` on `testFlig
    - `src/Controller/UsersController.php`
    - `src/Controller/Admin/SetupPagesController.php`
    - `src/Util/SetupCase.php`
+
+   The 2026-09-24 rebuild also showed missing from CodeBlocks: `config/cron.php`, `webroot/cron.php`, `templates/element/2026/`, and the CodeBlocks demo pages `agents`, `email_queues`, `intergration_testing`, `passwordless_email_login`, `unified_cron_framework_and_monitoring`.
 2. **Built feature not promoted.** The email queue / unified cron work (`docs/features/email-queue-feature.md`, `unified_cron_framework_and_monitoring.md`) lives in `sourceFiles/` but not in CodeBlocks: `src/Command/CronCommand.php`, `src/Service/CronService.php`, `src/Controller/Staff/EmailQueuesController.php`, `src/Model/Table/EmailQueuesTable.php`, `src/Model/Table/EmailQueueAttachmentsTable.php`, `config/schema/2026-09-08.sql`. A new project built today would not get it.
 3. **`8-Save-CodeBlocks.php` references files that don't exist** in `sourceFiles/` (e.g. `AuditLogsTable.php`, `AuditContext.php`, `MenuStateHelper.php`, `Staff/AuditLogsController.php`, non-prefixed/Manager `EmailQueuesController.php`). The list is out of date with reality.
 4. **Two reverse-sync scripts** (`8-Save-CodeBlocks.php`, `codeBlocks/import_new_changes.sh`) with different lists. There should be one. -> Decision 1.
 5. **No schema path in the build.** `codeBlocks/cakePHP/4.x/` has no `config/schema/`, and no build step applies SQL. Features that need tables cannot be fully built deterministically yet. -> Decision 3.
-6. **CI step expects a missing folder.** `9-install-CodeBlocks_citesting.php` requires `codeBlocks/.github`, which does not exist, and exits `1` - so a fresh `1-Install.php` run is expected to end in "Script failed" after all other steps succeed. (Read from code; not yet executed.) -> Decision 4.
-7. **`exit` inside included transforms.** The `9-*` files are `include_once`-d by `2-Install-CodeBlocks.php`. Any bare `exit` (error path *or* the "already exists - skipping" path, e.g. in `9-Install-CodeBlocks_app.php`) stops every later transform, and error paths use `exit` with code `0`, so `1-Install.php` can report success on a partial install.
+6. **CI step expects a missing folder.** `9-install-CodeBlocks_citesting.php` requires `codeBlocks/.github`, which does not exist, and exits `1` - so a fresh `1-Install.php` run is expected to end in "Script failed" after all other steps succeed. Confirmed by the 2026-09-24 rebuild. -> Decision 4. **Fixed 2026-09-24:** skips with a message when the folder is absent.
+7. **`exit` inside included transforms.** The `9-*` files are `include_once`-d by `2-Install-CodeBlocks.php`. Any bare `exit` (error path *or* the "already exists - skipping" path, e.g. in `9-Install-CodeBlocks_app.php`) stops every later transform, and error paths use `exit` with code `0`, so `1-Install.php` can report success on a partial install. **Fixed 2026-09-24:** every error path is `exit(1)`, every skip path is `return` (ends only that transform).
 8. **No changelog, no last-sync marker.**
 9. **Docs vs. code naming.** Earlier drafts of this doc used `CodeBlocks/CakePHP/4.x/`; the repo uses `codeBlocks/cakePHP/4.x/`. The repo names are authoritative (see "Don't Rename Working Infrastructure").
+
+### Found by the Rebuild Test (2026-09-24)
+
+`sourceFiles/` was moved aside and `init-web/1-Install.php` run against the running Docker stack. CakePHP install and all transforms after the layout step succeeded; the build ended at the CI step (gap 6). Findings:
+
+10. **Icon fonts silently fail.** `9-Install-CodeBlocks_layout.php` creates `webroot/icons/` but not `icons/fonts/`, so both `bootstrap-icons.woff*` downloads fail with PHP warnings, and the script still prints "Saved" because the `file_put_contents()` result is not checked. **Fixed 2026-09-24:** folder created; download or save failure stops the build with exit 1.
+11. **Dependencies are not pinned.** `2-Install-Cake.php` uses `cakephp/app:^4.0` and `cakephp/authentication:^2.0`, so each build resolves whatever is newest that day (this run: app skeleton 4.5.0, cakephp 4.6.5, authentication 2.11.3; about 300 `vendor/` files changed vs. TestFlight). Two builds on different days are not identical. Candidate fix: keep a tested `composer.lock` in CodeBlocks and install from it.
+12. **Routes transform emits deprecated syntax.** `9-Install-CodeBlocks_routes.php` generates prefix routes with `/:language/:controller` (deprecated in CakePHP 4; TestFlight was hand-fixed to `{language}`), and joins the `connect(...)` and `fallbacks()` lines onto one line. **Fixed 2026-09-24.**
+    - Also found while fixing: the "already installed" marker checked for `'/login'` but the script inserts `'/{language}/login'`, so a second run would have inserted the root routes again. **Fixed 2026-09-24.**
+13. **Transform drift - TestFlight changes to framework files not in the transforms.** TestFlight's `AppController.php` has `getUserId()` and menu entries (AGENTS.md, Email Queues, Integration Testing, Unified Cron Framework, renamed "Email Queues" item) that `9-Install-CodeBlocks_appController.php` does not produce. The reverse sync cannot catch this; the drift report must also compare transform output against TestFlight's framework files. Because the menu lives inside the AppController transform, every new demo page requires editing a transform - a candidate for moving the menu into a synced file.
+14. **`/en/setup-pages/home` returns 500.** `SetupPagesController` (in CodeBlocks and TestFlight) loads an `ObjectStorages` table that does not exist.
+15. **Install output is double-escaped.** `1-Install.php` escapes sub-script HTML, so headings and `<br/>` show as literal text. Cosmetic. **Fixed 2026-09-24.**
+16. **`config/app_local.php` differs on every build** (fresh `Security.salt`). Expected; the rebuild check must ignore it.
+17. **Local Bootstrap Icons fonts are unused.** `9-Install-CodeBlocks_layout.php` downloads `icons/fonts/bootstrap-icons.woff*`, but the matching `bootstrap-icons.css` download is commented out and nothing in CodeBlocks references the fonts. Decide: add the CSS, or stop downloading the fonts.
 
 ---
 
@@ -292,6 +308,8 @@ Because `main` has no `sourceFiles/`, promotion to `main` must never carry `sour
 
 - On `testFlight`, keep **feature commits** (touching `sourceFiles/`) separate from **factory commits** (touching `codeBlocks/`, `init-web/`, `docs/`, scripts).
 - Bring factory commits to `main` by cherry-pick, or by checking out only factory paths from `testFlight` onto `main`. Never merge `testFlight` into `main` wholesale.
+- `sourceFiles/` is intentionally **not** in `main`'s `.gitignore`. `main` is the GitHub template, and projects created from it are meant to commit their own `sourceFiles/`. Keeping it out of `main` is done by manual staging (AI never runs `git add` / `git commit`, per `AGENTS.md`). If a guard is needed later, add a branch-aware check to `git-hooks/pre-commit` (block `sourceFiles/` only on `main` of the setupCase-core remote).
+- Before building on `main`, delete the whole `sourceFiles/` folder. Checking out `main` removes tracked files but leaves ignored ones (`tmp/`, `logs/`), and `2-Install-Cake.php` skips the CakePHP install whenever `sourceFiles/` exists.
 
 ---
 
@@ -493,18 +511,28 @@ All decided 2026-09-24 by the project owner.
 
 ### Scenarios
 
-- [ ] From `main` with no `sourceFiles/`, `1-Install.php` completes with exit code 0 and opens CodeBlocks.
+- [x] From `main` with no `sourceFiles/`, `1-Install.php` completes with exit code 0 and opens CodeBlocks.
+  - Manually verified 2026-09-24 (fresh build + re-run against Docker stack).
 - [ ] Every synced file under `codeBlocks/cakePHP/4.x/` is present and identical in the generated `sourceFiles/`.
 - [ ] `README.md` and `changeLog.md` from `codeBlocks/cakePHP/4.x/` are not copied into `sourceFiles/`.
+- [ ] Builds on different days install the same dependency versions.
+- [x] Every downloaded layout asset is saved, or the build fails naming the asset.
+  - Manually verified 2026-09-24 (fresh build + re-run against Docker stack).
+- [x] Generated routes use `{placeholder}` syntax only.
+  - Manually verified 2026-09-24 (fresh build + re-run against Docker stack).
 - [ ] Each transform inserts its change once at the expected anchor.
-- [ ] Running the build a second time changes no files.
+- [x] Running the build a second time changes no files.
+  - Manually verified 2026-09-24 (fresh build + re-run against Docker stack).
 - [ ] A transform whose anchor is missing stops the build with a non-zero exit code.
-- [ ] A transform that skips (already applied) does not prevent later transforms from running.
+  - Missing-file error path manually verified 2026-09-24 (`AppView.php` removed -> exit 1); missing-anchor path not yet exercised.
+- [x] A transform that skips (already applied) does not prevent later transforms from running.
+  - Manually verified 2026-09-24 (fresh build + re-run against Docker stack).
 - [ ] Schema files for promoted features are present in `sourceFiles/config/schema/` after build.
 - [ ] The schema step applies dated SQL files in date order to an empty database.
 - [ ] Re-running the schema step skips files already applied.
 - [ ] A failing SQL file stops the build with a non-zero exit code and names the file.
-- [ ] Without `codeBlocks/.github/`, the CI step skips with a message and the build still succeeds.
+- [x] Without `codeBlocks/.github/`, the CI step skips with a message and the build still succeeds.
+  - Manually verified 2026-09-24 (fresh build + re-run against Docker stack).
 
 ## Update CodeBlocks
 
