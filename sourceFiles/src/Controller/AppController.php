@@ -62,6 +62,15 @@ class AppController extends Controller
         $this->setupMenu();
     }
 
+    public function getUserId()
+    {
+        if (isset($this->request->getAttribute('identity')['id'])) {
+            return $this->request->getAttribute('identity')['id'];
+        }
+
+        return false;
+    }
+
     public function setupCase()
     {
         $setupCase = new SetupCase();
@@ -117,11 +126,35 @@ class AppController extends Controller
                         ],
                     ],
                     [
+                        'name' => 'AGENTS.md',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'agents',
+                        ],
+                    ],
+                    [
+                        'name' => 'Email Queues',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'emailQueues',
+                        ],
+                    ],
+                    [
                         'name' => 'Responsive Table',
                         'link' => [
                             'prefix' => false,
                             'controller' => 'CodeBlocks',
                             'action' => 'responsiveTable',
+                        ],
+                    ],
+                    [
+                        'name' => 'Unified Cron Framework',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'unifiedCronFrameworkAndMonitoring',
                         ],
                     ],
                     [
@@ -226,7 +259,7 @@ class AppController extends Controller
                         ],
                     ],
                     [
-                        'name' => 'Automated Emailers',
+                        'name' => 'Email Queues',
                         'link' => [
                             'prefix' => 'Staff',
                             'controller' => 'EmailQueues',
