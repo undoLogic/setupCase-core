@@ -75,8 +75,8 @@ The name is used for:
 
 Each project's database lives in its own volume (`<name>_db_data`) and survives stop, restart and switching projects.
 
-- `sql/*.sql` (including `init.sql`) only runs the **first** time the volume is created.
-- To reset a project's database to `init.sql`:
+- `sql/*.sql` (including `09-SetupCase-testing_data_delete.sql`) only runs the **first** time the volume is created.
+- To reset a project's database to `09-SetupCase-testing_data_delete.sql`:
 
 ```shell
 ./dockerLinux/9resetDatabase.sh   # asks you to type the project name, then deletes and reloads ONLY this project's database
@@ -94,7 +94,7 @@ Run the scripts from anywhere in the repository:
 ./dockerLinux/1reStartDocker.sh         # recreate this project's containers (database kept)
 ./dockerLinux/0stop.sh                  # stop and remove this project's containers (database kept)
 ./dockerLinux/2loginDockerContainer.sh  # shell inside this project's web container
-./dockerLinux/9resetDatabase.sh         # DELETE this project's database and reload init.sql (asks to confirm)
+./dockerLinux/9resetDatabase.sh         # DELETE this project's database and reload 09-SetupCase-testing_data_delete.sql (asks to confirm)
 ```
 
 ## Cleaning Up Old Projects

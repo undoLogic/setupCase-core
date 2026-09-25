@@ -331,4 +331,3 @@ CREATE TABLE `LIVE_database`.`form_attempts` (`id` INT NOT NULL AUTO_INCREMENT ,
 
 
 
-CREATE DATABASE IF NOT EXISTS test_automation;
