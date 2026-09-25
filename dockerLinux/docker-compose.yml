@@ -1,7 +1,10 @@
+# Project name comes from PROJECT_NAME in dockerLinux/.env (see README.md)
+name: ${PROJECT_NAME:?Set PROJECT_NAME in dockerLinux/.env}
+
 services:
   web:
     build: ./web81
-    image: docker_web81
+    image: ${PROJECT_NAME}_web81:local
     ports:
       - "80:80"
       - "443:443"
@@ -23,6 +26,8 @@ services:
     command: --max_allowed_packet=932505856 --innodb-log-file-size=150663296     # Set max_allowed_packet to 256M (or any other value)
     volumes:
       - ./sql/:/docker-entrypoint-initdb.d
+      # Named per project (<name>_db_data) so the database survives stop/restart/switching projects
+      - db_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: undologic
       MYSQL_DATABASE: LIVE_database
@@ -37,3 +42,6 @@ services:
       - "8081:80"
     links:
       - db
+
+volumes:
+  db_data:
