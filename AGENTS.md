@@ -995,3 +995,15 @@ The generated Markdown is the deterministic contract between Codex and UpdateCas
 UpdateCase itself should not have to guess what Codex meant.
 
 The human reviews the proposed structure before UpdateCase changes its database.
+
+
+
+
+
+
+
+## Journeys
+
+Journeys are step-by-step user flows (e.g. submitting a quote) that generate screenshots and a client-facing PDF.
+
+They live in `docs/journeys/`, one markdown file per flow. Before creating or editing a journey, read `docs/journeys/README.md` for the file format and writing rules.
