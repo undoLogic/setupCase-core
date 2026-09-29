@@ -19,8 +19,8 @@ The file format is deterministic. The runner never uses AI to interpret a journe
 
 - **This README (the spec):** in place.
 - **Browser method:** proven by hand in InternalTesting - headless Chromium driven over the DevTools Protocol (CDP) by a small Python script. See [Runner](#runner).
-- **Journey runner and PDF builder:** not built yet. The runner reads journey files and drives the proven method. See [Open decisions](#open-decisions).
-- **`aiAccess` login:** exists in InternalTesting, not yet promoted into CodeBlocks. See [Prerequisites](#prerequisites).
+- **Journey runner and PDF builder:** built, in `docs/journeys/runner/`. One command runs a journey and builds its PDF - see [Running a journey](#running-a-journey). No AI is involved in a run.
+- **`aiAccess` login:** proven in InternalTesting. The code to copy into each project is in [aiAccess reference code](#aiaccess-reference-code).
 
 ---
 
@@ -29,7 +29,9 @@ The file format is deterministic. The runner never uses AI to interpret a journe
 ```
 docs/journeys/
 |-- README.md            <- this file (the spec)
+|-- logo.png             <- your company logo, shown on the PDF cover (optional)
 |-- files/               <- fixture files used by `upload` steps
+|-- runner/              <- the runner: run.sh, journey_runner.py, requirements.txt
 |-- edit-profile.md      <- one file per journey
 |-- submit-quote.md
 `-- ...
@@ -68,20 +70,102 @@ Flow for a journey with `login: ai`:
 4. It sets the identity and redirects to `start_url`. Only local paths are accepted: it must start with `/`; `//` and `\` are rejected; anything invalid goes to `/`.
 5. No screenshot is taken during login. This also keeps the "Logged in as the AI user" flash message out of the PDF. The runner then starts step 1.
 
-What the AI user can reach is decided by its role and the normal prefix RBAC (`config/app.php` `rbac`) - journeys get no special access. In InternalTesting the AI user is `ai_user@undoweb.com` with role OWNER. The CodeBlocks `rbac` only defines ADMIN, MANAGER and STAFF, so each project must give the AI user a role that exists in its own `rbac` and reaches every prefix its journeys use.
+What the AI user can reach is decided by its role and the normal prefix RBAC (`config/app.php` `rbac`) - journeys get no special access. In InternalTesting the AI user is `ai_user@example.com` with role OWNER. The default SetupCase `rbac` only defines ADMIN, MANAGER and STAFF, so each project must give the AI user a role that exists in its own `rbac` and reaches every prefix its journeys use.
 
 ### Prerequisites
 
 Before journeys work in a project, it needs:
 
-- [ ] `UsersController::aiAccess()` and `aiAccess_redirectTarget()`.
-- [ ] `UsersTable::getAiAccessUser()` and the `AI_ACCESS_EMAIL` constant.
+- [ ] `UsersController::aiAccess()` and `aiAccess_redirectTarget()` - see [aiAccess reference code](#aiaccess-reference-code).
+- [ ] `UsersTable::getAiAccessUser()` and the `AI_ACCESS_EMAIL` constant - same section.
 - [ ] The AI user row in the Docker database, active, with the role the journeys need.
 - [ ] A route for `/users/ai-access` (no language segment).
 - [ ] `aiAccess` allowed without authentication (`addUnauthenticatedActions`), or the login redirect catches it.
-- [ ] `Environments::getActive()` returning `DOCKER` for **web** requests inside Docker. The current CodeBlocks version returns `LOCAL` for any request to `localhost` and only reaches `DOCKER` from the CLI, so `aiAccess` would always 404 until this is fixed. InternalTesting already has this working - copy its version.
+- [ ] `Environments::getActive()` returning `DOCKER` for **web** requests inside Docker. Older SetupCase versions return `LOCAL` for any request to `localhost` and only reach `DOCKER` from the CLI, so `aiAccess` would always 404. Check what your project returns for a web request to `localhost` before relying on it.
 - [ ] The Docker stack running (`dockerLinux/1reStartDocker.sh`).
 - [ ] The runner tooling on the host - see [Runner](#runner).
+
+
+### aiAccess reference code
+
+Copy these into each project. They are the versions proven in InternalTesting.
+
+**`src/Model/Table/UsersTable.php`** - the constant and the lookup:
+
+```php
+    // The one account UsersController::aiAccess() may sign in as (DOCKER only)
+    public const AI_ACCESS_EMAIL = 'ai_user@example.com';
+
+    /**
+     * The one user UsersController::aiAccess() may log in as (DOCKER only).
+     * Must be active and not removed.
+     */
+    public function getAiAccessUser(): array
+    {
+        $user = $this->find()
+            ->where([
+                'Users.email' => self::AI_ACCESS_EMAIL,
+                'Users.is_active' => 1,
+                'Users.removed' => 0,
+            ])
+            ->first();
+        if (!$user) {
+            return ['STATUS' => 404, 'MSG' => 'AI user ' . self::AI_ACCESS_EMAIL . ' not found or inactive'];
+        }
+
+        return ['STATUS' => 200, 'MSG' => 'AI user found', 'user' => $user];
+    }//getAiAccessUser
+```
+
+**`src/Controller/UsersController.php`** - the action and its redirect guard. Needs `use App\Util\Environments;` and `use Cake\Http\Exception\NotFoundException;`.
+
+```php
+    /**
+     * DOCKER-only password-less login as the AI user (see docs/journeys/README.md) so an
+     * AI agent can click around the local build. The AI user only has the access its
+     * own group/roles give it. Any other environment gets a plain 404, so the action
+     * looks like it doesn't exist.
+     */
+    public function aiAccess()
+    {
+        $activeEnv = Environments::getActive();
+        if ($activeEnv != 'DOCKER') {
+            throw new NotFoundException();
+        }
+
+        $response = $this->Users->getAiAccessUser();
+        if ($response['STATUS'] !== 200) {
+            throw new NotFoundException($response['MSG']);
+        }
+
+        $this->request->getSession()->write('temp_group_id', false);
+        $this->Authentication->setIdentity($response['user']);
+        $this->Flash->success('Logged in as the AI user (DOCKER only).');
+
+        return $this->redirect($this->aiAccess_redirectTarget());
+    }//aiAccess
+
+    /**
+     * Optional ?redirect=/some/local/path so a single (headless) browser visit can log
+     * in and land on the page to inspect. Local paths only - never another host.
+     */
+    private function aiAccess_redirectTarget(): string
+    {
+        $redirect = (string)$this->request->getQuery('redirect', '');
+        if (strncmp($redirect, '/', 1) !== 0 || strncmp($redirect, '//', 2) === 0 || strpos($redirect, '\\') !== false) {
+            return '/';
+        }
+
+        return $redirect;
+    }//aiAccess_redirectTarget
+```
+
+Notes when copying:
+
+- `temp_group_id` clears a group a previous session may have switched to. Drop the line if the project has no group switching.
+- `is_active` and `removed` must match the project's `users` columns. Adjust the `where` if they differ.
+- The route and the unauthenticated-action entry are listed in [Prerequisites](#prerequisites). Add the route before `fallbacks()`, e.g. `$builder->connect('/users/ai-access', ['controller' => 'Users', 'action' => 'aiAccess']);`.
+- Never loosen the `DOCKER` check or the redirect guard. They are what keep this off real servers and stop it being used as an open redirect.
 
 ---
 
@@ -91,6 +175,8 @@ A journey file has YAML front matter, followed by one `##` heading per step.
 
 ```markdown
 ---
+client: CLIENT NAME
+project: BIG PROJECT
 name: Edit your profile
 description: How a staff member updates their own contact details.
 feature: docs/features/user-profile.md
@@ -124,12 +210,14 @@ start_url: /staff/en/users/profile
 
 ### Front matter
 
-| Field         | Required | Notes |
-|---------------|----------|-------|
-| `name`        | yes      | Human-readable journey name. Used as the PDF title. |
-| `description` | yes      | One sentence. Appears on the PDF cover. |
-| `feature`     | no       | Path to the feature file this journey walks through. |
-| `login`       | yes      | `ai` (log in through `aiAccess`) or `none` (public pages). |
+| Field         | Required | Notes                                                                                                 |
+|---------------|----------|-------------------------------------------------------------------------------------------------------|
+| `client`      | yes      | The company the journey is for, e.g. `CLIENT NAME`. Shown at the top of the PDF cover.                |
+| `project`     | yes      | The project or app name, e.g. `Big Project`. Shown next to `client` on the cover.      |
+| `name`        | yes      | Human-readable journey name. Used as the PDF title.                                                   |
+| `description` | yes      | One sentence. Appears on the PDF cover.                                                               |
+| `feature`     | no       | Path to the feature file this journey walks through.                                                  |
+| `login`       | yes      | `ai` (log in through `aiAccess`) or `none` (public pages).                                            |
 | `start_url`   | yes      | Local path where the runner lands before step 1. Full route including language and prefix (see URLs). |
 
 ### Step fields
@@ -143,6 +231,7 @@ Each step is a `##` heading followed by `- key: value` lines, in this order:
 | `target`      | if the action needs it | A local path (for `goto`) or a selector. |
 | `value`       | if the action needs it | The text, option, or file. |
 | `expect`      | always | A selector that must be **visible** after the action. |
+| `dialog`      | optional | `accept` or `dismiss`. The action opens a browser `confirm()`/`alert()` box; the runner answers it. |
 | `expect_text` | optional | Text that must appear on the page after the action. |
 | `caption`     | always | The explanation shown below the screenshot. |
 
@@ -157,6 +246,15 @@ Each step is a `##` heading followed by `- key: value` lines, in this order:
 | `editor` | textarea id     | text    | Sets a TinyMCE editor's content with `tinymce.get(<target>).setContent(<value>)`. `target` is the bare id, no `#`. |
 | `upload` | selector        | file name | Attaches `docs/journeys/files/<value>` to the file input (CDP `DOM.setFileInputFiles`). |
 | `wait`   | -               | -       | Does nothing; the runner just waits for `expect`. Use for slow screens. |
+| `email_code` | selector    | email address | Reads the newest `email_queues` row whose `email_to` is `value` (from the Docker database), takes the first 6-digit number in its text, and fills it into `target` like `fill`. |
+| `email_preview` | - | email address | Shows the newest `email_queues` row whose `email_to` is `value` as an email-client page: From, To, Subject, attachment names, then the message HTML exactly as queued. Its `expect` is `[data-testid="email-preview"]`. |
+| `email_attachments` | - | email address | Shows every page of every PDF attached to that same newest email, side by side, each labelled with its file name and page. Its `expect` is `[data-testid="email-attachments"]`. |
+
+Browser dialogs (`confirm()`, `alert()`) block the page until answered. A step whose action opens one must say `dialog: accept` or `dialog: dismiss`; the runner answers it with CDP `Page.handleJavaScriptDialog`. An unexpected dialog stops the run. Dialogs are native browser boxes, so they never appear in screenshots - mention them in the caption if the client should know.
+
+`email_code` exists because verification codes are only ever delivered by email. Every email goes through the queue first, so the runner can read the code there instead of from an inbox. It only works where the runner can reach the Docker database.
+
+`email_preview` and `email_attachments` let the client see what the customer receives, without anyone opening an inbox. The runner builds these pages itself from the queue (it is not a page of the software), so they leave the site: put them after the last step that clicks through the software. Attachment paths are stored as the container sees them; the runner maps the container web root (`/var/www/vhosts/website.com/www`) to the project folder on the host and renders PDF pages with `pdftoppm` (poppler-utils).
 
 There is deliberately no "run this JavaScript" action. If a widget needs one, add a named action here so every journey drives it the same way.
 
@@ -164,7 +262,7 @@ A field the action doesn't use must not be written. A missing required field, an
 
 ### How a step runs
 
-1. Perform the action. If the target selector matches nothing, the step fails - it is never skipped.
+1. Perform the action. If the target selector matches nothing, the step fails - it is never skipped. If the step has `dialog`, answer the dialog the action opens.
 2. Wait for `document.readyState === 'complete'` (this covers the page load after a click submits a form).
 3. Wait for `expect` to be visible (timeout: 10 seconds). This replaces fixed sleeps - the step goes on as soon as the screen is ready.
 4. If `expect_text` is set, wait for that text to appear.
@@ -207,7 +305,7 @@ In order of preference:
 
 To find selectors on a page, use the CDP driver's `js` command on the running page, e.g. `Array.from(document.querySelectorAll('a')).map(a=>a.innerText.trim()+' => '+a.getAttribute('href'))`.
 
-CodeBlocks templates don't have `data-testid` attributes yet. Adding them to the templates a journey touches is part of writing that journey.
+SetupCase templates don't have `data-testid` attributes yet. Adding them to the templates a journey touches is part of writing that journey.
 
 ---
 
@@ -241,14 +339,17 @@ A journey is a **client walkthrough, not a test**.
 
 - Browser viewport: **1920 x 1080**, device scale factor 1, desktop (set with CDP `Emulation.setDeviceMetricsOverride`). The InternalTesting driver hard-codes 1440 x 1000 - the journey runner must use 1920 x 1080.
 - Captured at **16:9**, uncropped and unannotated. Capture the viewport, not the full page.
-- Files are written as `<output>/<journey-file-name>/NN-<title-slug>.png`, e.g. `02-change-your-phone-number.png`. The number comes from the step's position at run time; it is never written in the journey file.
+- Files are written as `<output>/<run-name>/NN-<title-slug>.png`, e.g. `screenshots/2026-09-29_14-05-32-journey-customize-to-submit/02-change-your-phone-number.png`. `<run-name>` is the PDF's file name without `.pdf` (see [PDF layout](#pdf-layout)), so each run's PDF and screenshot folder sit side by side with the same name - delete both together when a run is no longer needed. The number comes from the step's position at run time; it is never written in the journey file.
 - Nothing is drawn over the screenshot. The image stays clean so nothing important is ever covered.
 
 ---
 
 ## PDF layout
 
-- **Landscape A4**, one step per page, after a cover page with `name` and `description`.
+- **File name:** `<output>/<run-name>.pdf`, where `<run-name>` is `YYYY-MM-DD_HH-II-SS-<journey-file-name>`, stamped with the local date and time the run started, e.g. `2026-09-29_14-05-32-journey-customize-to-submit.pdf`. The run's screenshots go in a folder with the same `<run-name>`. Every run makes a new PDF and folder, so earlier runs are never overwritten and sort by date. The time uses `-`, not `:`, because Windows and macOS don't allow `:` in file names and the PDF is sent to clients.
+- **Landscape A4**, one step per page, after a cover page laid out top to bottom as: `Client: <client> / Project: <project>`, the `name`, the `description`, the Automated Build banner, and the logo at the bottom.
+- **Automated Build banner:** the cover always carries, between the description and the logo, a large "AUTOMATED BUILD" title, a line explaining the walkthrough was generated automatically from the application and that, on request, the software can be promptly updated and an updated build delivered, and the date and time it was generated. It tells the client the PDF is a by-product of the tooling, not billable manual work. The wording is fixed in the runner so every project says the same thing.
+- **Cover logo:** if `docs/journeys/logo.png` exists, the cover shows it centred at the bottom of the page (max 30 mm tall, 60 mm wide, aspect ratio kept). One logo per project, used by every journey. Use a PNG with a transparent or white background. No file, no logo - the run doesn't fail.
 - **Above** the image: `Step N of M` and the step title.
 - **Middle**: the 16:9 screenshot.
 - **Below** the image: the caption, as a band beneath the picture - never overlaid on it.
@@ -264,6 +365,32 @@ The PDF is built by the same headless Chromium: the builder writes an HTML page 
 ## Runner
 
 The browser method below was proven by hand in InternalTesting. The journey runner automates it: it reads a journey file and sends the matching CDP commands for each step.
+
+### Running a journey
+
+From the project root, with the Docker stack running:
+
+```bash
+docs/journeys/runner/run.sh docs/journeys/<journey>.md
+```
+
+That is the whole manual process - no AI, no tokens. `run.sh`:
+
+1. On first use, creates a Python venv in `docs/journeys/runner/.venv` and installs `requirements.txt` (`websocket-client`, `pyyaml`). The venv is git-ignored.
+2. Starts headless Chromium (Flatpak) on port 9222 with a fresh, temporary profile, so no cookies or cart carry over between runs.
+3. Runs `journey_runner.py`, which walks every step, prints `[N/M] <title>` as it goes, and ends with `PDF: screenshots/<run-name>.pdf`.
+4. Stops Chromium, even if the run fails.
+
+Options:
+
+- Second argument: the output folder (default `screenshots`), e.g. `run.sh docs/journeys/x.md /tmp/out`.
+- The database container for `email_*` actions is `<PROJECT_NAME>-db-1`, read from `dockerLinux/.env`. Pass `--db <container>` to `journey_runner.py` directly if a project differs.
+
+If a step fails, the run stops with `FAILED at step N "<title>": <reason>` and the path of a debug screenshot. No PDF is built. The usual causes: a selector changed in a template, the Docker stack isn't running, or port 9222 is still held by another Chromium (`pkill -f "remote-debugging-por[t]=9222"`).
+
+Host requirements: Linux with Flatpak Chromium (`org.chromium.Chromium`), Python 3, `curl`, `docker`, and `pdftoppm` (poppler-utils) for `email_attachments`. Other hosts need their own Chromium launch line in `run.sh`; the rest is the same.
+
+The sections below describe how the runner drives Chromium, for anyone changing it.
 
 ### Host setup (Linux, Flatpak Chromium)
 
@@ -299,6 +426,8 @@ The InternalTesting session used a small driver, `cdp.py`: `python cdp.py <cmd> 
 | `goto`           | `Page.navigate` |
 | `click`, `fill`, `select`, `editor`, `expect`, `expect_text` | `Runtime.evaluate` (with `returnByValue`, `awaitPromise`) |
 | `upload`         | `DOM.setFileInputFiles` |
+| `dialog`         | `Page.javascriptDialogOpening` event, then `Page.handleJavaScriptDialog` |
+| `email_code`     | `docker exec <project>-db-1 mysql ...` to read the code, then the same call as `fill` |
 | Viewport         | `Emulation.setDeviceMetricsOverride` |
 | Screenshot       | `Page.captureScreenshot` (PNG) |
 | PDF              | `Page.printToPDF` |
@@ -333,10 +462,10 @@ Differences from `cdp.py` that the runner must fix:
 
 To settle before the runner is built:
 
-1. **Where the runner and `cdp.py` live.** Tool decided: Python + CDP + headless Chromium, as proven in InternalTesting (no Playwright or Node on the host). Still open: the folder in SetupCase Core, and whether it ships to client projects as its own installer module.
+1. **Shipping the runner.** Decided: Python + CDP + headless Chromium, living in `docs/journeys/runner/`. Still open: whether it ships to client projects as its own installer module.
 2. **Output location and commit policy.** InternalTesting used `screenshots/<name>/` at the project root. Decide whether screenshots and PDFs are committed or git-ignored.
 3. **Distribution.** `docs/` is not in `install_setupCaseCore_modules.sh` `MODULES`, so existing client projects don't receive this spec through the installer - only new projects created from the template.
-4. **Promote `aiAccess` into CodeBlocks**, including the `Environments` fix.
+4. **Ship `aiAccess` with the SetupCase template.** Today it is copied by hand from [aiAccess reference code](#aiaccess-reference-code), including the `Environments` check.
 
 ---
 
@@ -349,5 +478,4 @@ To settle before the runner is built:
 5. Give every `expect` a selector that proves the screen is ready; add `data-testid` to templates where needed.
 6. Keep titles <= 40 characters and captions <= 140 characters.
 7. Don't write step numbers anywhere.
-8. Reset the Docker database, start the debugging Chromium, regenerate screenshots and the PDF, then review the PDF page by page.
-9. Kill the debugging Chromium.
+8. Reset the Docker database if the PDF goes to a client (see [Starting data](#starting-data)), run `docs/journeys/runner/run.sh docs/journeys/<flow-name>.md`, then review the PDF page by page.
