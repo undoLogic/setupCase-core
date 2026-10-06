@@ -1007,3 +1007,13 @@ The human reviews the proposed structure before UpdateCase changes its database.
 Journeys are step-by-step user flows (e.g. submitting a quote) that generate screenshots and a client-facing PDF.
 
 They live in `docs/journeys/`, one markdown file per flow. Before creating or editing a journey, read `docs/journeys/README.md` for the file format and writing rules.
+
+### aiAccess (Docker-only AI login)
+
+`UsersController::aiAccess()` signs the journey runner in as one AI user without a password. This is a known, intentional pattern - not a security hole - only while these guardrails hold:
+
+- It returns 404 unless `Environments::getActive() === 'DOCKER'`. Never loosen, bypass, or add other environments to this check.
+- It signs in only `UsersTable::AI_ACCESS_EMAIL`. Never accept a user id or email from the request.
+- The redirect accepts local paths only (`/...`; no `//`, `\`, or hosts). Never relax this guard.
+- The AI user has no password and only the access its own role and group give it. It is created only by the Docker seed SQL, never on pending or live.
+- Any change to `aiAccess`, its environment check, or the AI user needs explicit human review.
