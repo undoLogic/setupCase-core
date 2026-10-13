@@ -570,17 +570,23 @@ If automated testing cannot be completed, leave the human-readable testing scena
 
 ## Never Stage or Commit Automatically
 
-- Never run `git add` or `git commit` unless the user explicitly asks
-  for it in that turn.
-- This applies even after a large multi-file change, and even if the
-  user approved staging/committing earlier in the session — a prior
-  approval does not carry forward to new changes.
-- Leave changes in the working tree. The user reviews the diff and
-  stages/commits manually themselves, in their own single commit.
-- Reason: the user sometimes works against pending/remote servers
-  (not local), and manually staging is how they control exactly which
-  files get uploaded there. Do not shortcut this by staging on their
-  behalf "to save time."
+- Never run `git commit` or `git push` unless the user explicitly asks
+  for it in that same turn. These write history or send it to a
+  pending/remote server, and that step is the user's alone.
+- A prior approval earlier in the session never carries forward to new
+  changes, even after a large multi-file change.
+- Do not run `git add` on your own initiative either. The user stages
+  files themselves on purpose: watching what moves into staging forces
+  a look at every new and modified file before anything is committed.
+  That is the cheapest moment to catch a stray debug file, a temp
+  artifact, or a file written to the wrong place. Staging on their
+  behalf, even "to save time," removes that review.
+- If the user names specific files to stage, staging those is fine.
+  Choosing what to stage on their behalf is not.
+- Staging is also how the user controls exactly which files get
+  uploaded when working against pending/remote servers.
+- Leave changes in the working tree so the user can review, stage, and
+  commit themselves.
 
 ---
 
