@@ -67,6 +67,15 @@ Two separate rules below — never conflate them.
 
 Ownership/tenant scoping is mandatory everywhere it applies, independent of the RBAC rule above.
 
+## HTTP Method by Effect
+
+Prefix RBAC answers who can reach an action, scoping answers which rows it may touch, and the HTTP method answers how a request is allowed to arrive.
+
+- GET is for read-only actions only: lists, detail views, and loading an edit form.
+- Any action that changes state must be POST and must never be reachable by GET. This includes create, update, delete, toggles, reordering, resets, and side effects such as sending mail.
+- This holds regardless of prefix or portal access. Prefixes authorize who can reach an action, not whether the request was intended; browsers, link previews, and scanners follow GET links automatically, so a state change must never ride on a GET.
+- To debug a state-changing action, submit the form once and refresh (the browser re-sends the POST), or call the Table method directly from a console command. Never convert the action to GET for convenience.
+
 ## Non-HTTP Entry Points
 
 - Prefix RBAC runs in middleware, tied to routing — cron jobs, console commands, and queue workers run at full privilege by design and get **zero** role protection from it.
