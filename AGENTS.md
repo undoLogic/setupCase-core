@@ -996,11 +996,15 @@ UpdateCase itself should not have to guess what Codex meant.
 
 The human reviews the proposed structure before UpdateCase changes its database.
 
+---
 
+## Bug and Todo Files
 
+If `docs/bugs/` exists, treat each file in it as a bug note. When you touch a bug file, rewrite it in place into a light structure: a `# Title` line, a short `## Description`, and the author's original notes kept under `## Notes`. If `docs/todos/` exists, treat its files the same way, with the same structure.
 
+Only reorganize what the author wrote. Never invent a title, description, severity, reproduction steps, or any detail the author did not provide. This is a formatting-on-touch rule, not a tracking system: clean up the text, do not embellish it.
 
-
+---
 
 ## Journeys
 
