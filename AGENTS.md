@@ -67,6 +67,15 @@ Two separate rules below — never conflate them.
 
 Ownership/tenant scoping is mandatory everywhere it applies, independent of the RBAC rule above.
 
+## HTTP Method by Effect
+
+Prefix RBAC answers who can reach an action, scoping answers which rows it may touch, and the HTTP method answers how a request is allowed to arrive.
+
+- GET is for read-only actions only: lists, detail views, and loading an edit form.
+- Any action that changes state must be POST and must never be reachable by GET. This includes create, update, delete, toggles, reordering, resets, and side effects such as sending mail.
+- This holds regardless of prefix or portal access. Prefixes authorize who can reach an action, not whether the request was intended; browsers, link previews, and scanners follow GET links automatically, so a state change must never ride on a GET.
+- To debug a state-changing action, submit the form once and refresh (the browser re-sends the POST), or call the Table method directly from a console command. Never convert the action to GET for convenience.
+
 ## Non-HTTP Entry Points
 
 - Prefix RBAC runs in middleware, tied to routing — cron jobs, console commands, and queue workers run at full privilege by design and get **zero** role protection from it.
@@ -570,17 +579,23 @@ If automated testing cannot be completed, leave the human-readable testing scena
 
 ## Never Stage or Commit Automatically
 
-- Never run `git add` or `git commit` unless the user explicitly asks
-  for it in that turn.
-- This applies even after a large multi-file change, and even if the
-  user approved staging/committing earlier in the session — a prior
-  approval does not carry forward to new changes.
-- Leave changes in the working tree. The user reviews the diff and
-  stages/commits manually themselves, in their own single commit.
-- Reason: the user sometimes works against pending/remote servers
-  (not local), and manually staging is how they control exactly which
-  files get uploaded there. Do not shortcut this by staging on their
-  behalf "to save time."
+- Never run `git commit` or `git push` unless the user explicitly asks
+  for it in that same turn. These write history or send it to a
+  pending/remote server, and that step is the user's alone.
+- A prior approval earlier in the session never carries forward to new
+  changes, even after a large multi-file change.
+- Do not run `git add` on your own initiative either. The user stages
+  files themselves on purpose: watching what moves into staging forces
+  a look at every new and modified file before anything is committed.
+  That is the cheapest moment to catch a stray debug file, a temp
+  artifact, or a file written to the wrong place. Staging on their
+  behalf, even "to save time," removes that review.
+- If the user names specific files to stage, staging those is fine.
+  Choosing what to stage on their behalf is not.
+- Staging is also how the user controls exactly which files get
+  uploaded when working against pending/remote servers.
+- Leave changes in the working tree so the user can review, stage, and
+  commit themselves.
 
 ---
 
@@ -995,3 +1010,29 @@ The generated Markdown is the deterministic contract between Codex and UpdateCas
 UpdateCase itself should not have to guess what Codex meant.
 
 The human reviews the proposed structure before UpdateCase changes its database.
+
+---
+
+## Bug and Todo Files
+
+If `docs/bugs/` exists, treat each file in it as a bug note. When you touch a bug file, rewrite it in place into a light structure: a `# Title` line, a short `## Description`, and the author's original notes kept under `## Notes`. If `docs/todos/` exists, treat its files the same way, with the same structure.
+
+Only reorganize what the author wrote. Never invent a title, description, severity, reproduction steps, or any detail the author did not provide. This is a formatting-on-touch rule, not a tracking system: clean up the text, do not embellish it.
+
+---
+
+## Journeys
+
+Journeys are step-by-step user flows (e.g. submitting a quote) that generate screenshots and a client-facing PDF.
+
+They live in `docs/journeys/`, one markdown file per flow. Before creating or editing a journey, read `docs/journeys/README.md` for the file format and writing rules.
+
+### aiAccess (Docker-only AI login)
+
+`UsersController::aiAccess()` signs the journey runner in as one AI user without a password. This is a known, intentional pattern - not a security hole - only while these guardrails hold:
+
+- It returns 404 unless `Environments::getActive() === 'DOCKER'`. Never loosen, bypass, or add other environments to this check.
+- It signs in only `UsersTable::AI_ACCESS_EMAIL`. Never accept a user id or email from the request.
+- The redirect accepts local paths only (`/...`; no `//`, `\`, or hosts). Never relax this guard.
+- The AI user has no password and only the access its own role and group give it. It is created only by the Docker seed SQL, never on pending or live.
+- Any change to `aiAccess`, its environment check, or the AI user needs explicit human review.
