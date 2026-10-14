@@ -4,6 +4,10 @@
  * Loads the PDF from data-file-url with PDF.js, lays out one placeholder per
  * page, renders pages lazily as they scroll into view, and opens on
  * data-page (clamped to the last page). Requires modules/pdfjs-3.11.174/pdf.min.js.
+ *
+ * The current page is kept in the address bar (data-page-base-url + '/' + page,
+ * unless data-update-address-bar is 0, e.g. inside the modal iframe), and
+ * [data-doc-copy-link] copies that page link to the clipboard.
  */
 (function () {
     'use strict';
@@ -14,7 +18,9 @@
         var countEl = root.querySelector('[data-doc-page-count]');
         var ownTab = root.querySelector('[data-doc-own-tab]');
         var errorEl = root.querySelector('[data-doc-error]');
-        var ownTabBase = root.dataset.ownTabBaseUrl;
+        var copyButton = root.querySelector('[data-doc-copy-link]');
+        var pageBaseUrl = root.dataset.pageBaseUrl;
+        var updateAddressBar = root.dataset.updateAddressBar === '1';
         var pageEls = [];
         var current = 1;
 
@@ -80,7 +86,29 @@
         function setCurrent(n) {
             current = n;
             input.value = n;
-            ownTab.href = ownTabBase + '/' + n;
+            ownTab.href = pageUrl(n);
+            if (updateAddressBar) {
+                // Path only, so a scheme/host mismatch in the base URL can never break replaceState.
+                history.replaceState(null, '', new URL(pageUrl(n), window.location.href).pathname + window.location.search);
+            }
+        }
+
+        function pageUrl(n) {
+            return pageBaseUrl + '/' + n;
+        }
+
+        function copyLink() {
+            var url = pageUrl(current);
+            var label = copyButton.textContent;
+            var done = function () {
+                copyButton.textContent = 'Link copied';
+                setTimeout(function () { copyButton.textContent = label; }, 2000);
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(done, function () { window.prompt('Copy this link:', url); });
+            } else {
+                window.prompt('Copy this link:', url);
+            }
         }
 
         function trackCurrent() {
@@ -98,6 +126,7 @@
         root.querySelector('[data-doc-prev]').addEventListener('click', function () { goTo(current - 1); });
         root.querySelector('[data-doc-next]').addEventListener('click', function () { goTo(current + 1); });
         input.addEventListener('change', function () { goTo(parseInt(input.value, 10) || 1); });
+        copyButton.addEventListener('click', copyLink);
     }
 
     document.querySelectorAll('.documentation-viewer').forEach(init);

@@ -67,8 +67,12 @@ class DocumentationController extends AppController
         $this->set('docPage', $page);
         $this->set('docEmbed', $embed);
         $this->set('docFileUrl', $this->documentationUrl('file', [(int)$key], ['v' => $result['version']]));
-        $this->set('docOwnTabBaseUrl', $this->documentationUrl('view', [(int)$key]));
+        $this->set('docDownloadUrl', $this->documentationUrl('file', [(int)$key], ['v' => $result['version'], 'download' => 1]));
         $this->set('docOwnTabUrl', $this->documentationUrl('view', [(int)$key, $page]));
+        // Shareable link per page: base + '/' + page. Full URL so it can be pasted anywhere.
+        $this->set('docPageBaseUrl', $this->documentationUrl('view', [(int)$key], [], true));
+        // The modal iframe must not rewrite its own (embed) URL.
+        $this->set('docUpdateAddressBar', !$embed);
     }
 
     public function file($key = null)
@@ -78,10 +82,13 @@ class DocumentationController extends AppController
             throw new NotFoundException($result['MSG']);
         }
 
+        // ?download=1 saves the file instead of showing it in the browser
+        $disposition = $this->request->getQuery('download') ? 'attachment' : 'inline';
+
         return $this->response
             ->withFile($result['path'])
             ->withType('pdf')
-            ->withHeader('Content-Disposition', 'inline; filename="' . $result['filename'] . '"')
+            ->withHeader('Content-Disposition', $disposition . '; filename="' . $result['filename'] . '"')
             ->withHeader('Cache-Control', 'private, max-age=86400');
     }
 
@@ -123,13 +130,13 @@ class DocumentationController extends AppController
      * Same controller, current prefix and language, so the views need no
      * changes when this controller is moved under a prefix.
      */
-    private function documentationUrl(string $action, array $pass = [], array $query = []): string
+    private function documentationUrl(string $action, array $pass = [], array $query = [], bool $full = false): string
     {
         $url = ['action' => $action, 'language' => $this->request->getParam('language') ?: 'en'];
         if ($query) {
             $url['?'] = $query;
         }
 
-        return Router::url(array_merge($url, $pass));
+        return Router::url(array_merge($url, $pass), $full);
     }
 }

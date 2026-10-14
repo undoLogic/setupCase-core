@@ -124,11 +124,11 @@ Triggered by opening the link directly (e.g. a bookmark kept by whoever maintain
 
 ### `GET /en/documentation/file/{key}`
 
-Streams the raw PDF bytes. Used internally by the viewer.
+Streams the raw PDF bytes. Used internally by the viewer, and by the Download PDF button with `?download=1`.
 
 1. Look up `{key}`. If missing, 404.
 2. If the file has not been generated yet, 404 with a clear message.
-3. Stream `storagePath/filename` with `Content-Type: application/pdf` and `Content-Disposition: inline`.
+3. Stream `storagePath/filename` with `Content-Type: application/pdf` and `Content-Disposition: inline` (or `attachment` when `?download=1`, so the file is saved instead of opened).
 4. Never expose the internal path or redirect to it.
 
 ### `GET /en/documentation/view/{key}/{page?}`
@@ -138,6 +138,9 @@ The viewer page.
 1. Look up `{key}`. If missing, 404.
 2. `{page}` defaults to 1; non-numeric or < 1 falls back to 1. A page beyond the end opens the last page (handled by the viewer).
 3. Render a page that embeds **PDF.js**, loads the PDF from `documentation/file/{key}?v=<mtime>`, and opens on `{page}`.
+4. As the reader scrolls or uses the page controls, the address bar is updated to `documentation/view/{key}/{page}` without a reload (`history.replaceState`), so the URL always points at the current page. Not done inside the modal iframe (`?embed=1`), which must not rewrite its own URL.
+5. Toolbar buttons: **Copy link to this page** (copies the full URL of the current page; falls back to a prompt when the clipboard API is unavailable, e.g. plain HTTP), **Download PDF** (`file/{key}?v=<mtime>&download=1`), and **View in its own tab**.
+6. The controller provides `docPageBaseUrl` (full URL, without the page), `docUpdateAddressBar`, and `docDownloadUrl`; the template and JS do not build URLs.
 
 Example links (core):
 
@@ -157,7 +160,8 @@ Example links (core):
 Two framings, same viewer:
 
 - **Modal.** Inside the app, render element `2026/documentation/view_modal` so the doc opens in context. The modal holds an iframe to `documentation/view/{key}/{page}?embed=1`; `?embed=1` switches the view to the bare `documentation_embed` layout (no sidebar). The iframe only loads when the modal opens. The host page's controller sets `docModalUrl`, `docOwnTabUrl`, and `docModalTitle`.
-- **Own tab.** A "View in its own tab" button opens `documentation/view/{key}/{page}` as a full page. This is the link to paste into emails ("Here it is on page 22").
+- **Own tab.** A "View in its own tab" button opens `documentation/view/{key}/{page}` as a full page.
+- **Sharing a page.** "Copy link to this page" copies the current page's full URL. This is the link to paste into emails ("Here it is on page 22").
 
 ## Caching
 
@@ -309,6 +313,7 @@ Manual only (MVP). Automated tests intentionally skipped.
 #### Scenarios
 
 - [x] The PDF is returned inline (`application/pdf`).
+- [x] With `?download=1` the PDF is returned as an attachment (saved, not opened).
 - [x] An unknown key returns 404.
 - [x] A key whose PDF has not been generated yet returns 404 with a clear message.
 - [x] The response never reveals the internal storage path.
@@ -331,6 +336,10 @@ Manual only (MVP). Automated tests intentionally skipped.
 - [ ] After regenerate, the viewer loads the new content (version query changed), not a cached copy.
 - [ ] The modal and "View in its own tab" both open the same doc and page.
 - [x] The viewer layout works at phone width.
+- [ ] Scrolling or using the page controls updates the address bar to `view/{key}/{page}` without a reload.
+- [x] Inside the modal iframe (`?embed=1`) the address bar is not rewritten (`data-update-address-bar="0"`).
+- [ ] "Copy link to this page" copies the full URL of the current page and shows "Link copied"; without the clipboard API it shows a prompt with the link.
+- [ ] "Download PDF" saves the file instead of opening it.
 
 ### Core Demo Access
 
