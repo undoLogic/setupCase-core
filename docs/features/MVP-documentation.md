@@ -92,6 +92,7 @@ protected $storagePath = TMP . 'documentation' . DS;
 - `storagePath` must never be under `sourceFiles/webroot`, not even for testing: the file would be served directly and skip the controller entirely.
 - Starting default is `TMP . 'documentation' . DS`. The directory is created on first regenerate if missing, and `/sourceFiles/tmp/documentation/` is added to `.gitignore`.
 - tmp may be wiped by a deploy or cleanup. If that happens, the viewer shows "not generated yet" until regenerate is run again. Move to a dedicated private storage path later if this becomes a problem.
+
 ### Regenerate code
 
 - Read using the ENV Vars block pattern: server value (`get_cfg_var`) first, then Docker env (`env`), name `DOCUMENTATION_REGENERATE_CODE`.
@@ -155,7 +156,7 @@ Example links (core):
 
 Two framings, same viewer:
 
-- **Modal.** Inside the app, render the PDF.js view in a modal so the doc opens in context.
+- **Modal.** Inside the app, render element `2026/documentation/view_modal` so the doc opens in context. The modal holds an iframe to `documentation/view/{key}/{page}?embed=1`; `?embed=1` switches the view to the bare `documentation_embed` layout (no sidebar). The iframe only loads when the modal opens. The host page's controller sets `docModalUrl`, `docOwnTabUrl`, and `docModalTitle`.
 - **Own tab.** A "View in its own tab" button opens `documentation/view/{key}/{page}` as a full page. This is the link to paste into emails ("Here it is on page 22").
 
 ## Caching
@@ -247,11 +248,13 @@ Rules for the page itself:
 ## Implementation Surfaces
 
 - `sourceFiles/src/Controller/DocumentationController.php` (`view`, `file`, `regenerate`; no prefix in core)
-- Model-layer class for config + logic (e.g. `sourceFiles/src/Service/DocumentationService.php`, matching the existing `CronService`)
+- `sourceFiles/src/Service/DocumentationService.php` (config + logic, matching the existing `CronService`)
 - `sourceFiles/templates/Documentation/view.php` (short base template)
 - `sourceFiles/templates/element/2026/documentation/view_viewer.php`
 - `sourceFiles/templates/element/2026/documentation/view_modal.php`
-- PDF.js vendor asset + `sourceFiles/webroot/js/documentation-viewer.js`
+- `sourceFiles/templates/layout/documentation_embed.php` (bare layout for the modal iframe)
+- `sourceFiles/webroot/js/documentation-viewer.js`
+- PDF.js 3.11.174 vendor asset: `sourceFiles/webroot/modules/pdfjs-3.11.174/` (`pdf.min.js`, `pdf.worker.min.js`, `LICENSE`). Self-hosted on purpose: a CDN may be blocked on the same locked-down networks this block exists for. 3.x is used because it ships a classic (non-module) build.
 - `sourceFiles/src/Controller/AppController.php` (`setupMenu()`, Blocks group)
 - `sourceFiles/src/Controller/CodeBlocksController.php` (`documentation()`)
 - `sourceFiles/templates/CodeBlocks/documentation.php`
@@ -259,16 +262,16 @@ Rules for the page itself:
 
 ## Build checklist
 
-- [ ] Create the model-layer class with `$documents` (demo doc only), `$storagePath`, the privacy warning, and the no-group-scope comment.
-- [ ] Implement regenerate logic: Doc ID validation, fetch, PDF validation, atomic write.
-- [ ] Create the unprefixed `DocumentationController` with the disclaimer and privacy `WARNING`; `regenerate` as GET + `?code=` with the MVP-exception comment.
-- [ ] Read `DOCUMENTATION_REGENERATE_CODE` (ENV Vars pattern); regenerate disabled when unset.
-- [ ] Implement `file` with inline streaming.
-- [ ] Add PDF.js to the project assets.
-- [ ] Implement `view` with page argument; all URLs (file with version query, own tab, regenerate) built in the controller.
-- [ ] Add the modal and the "View in its own tab" button.
-- [ ] Create `TMP/documentation/` on first regenerate if missing; add `/sourceFiles/tmp/documentation/` to `.gitignore`.
-- [ ] Add the `Documentation` link to the Blocks menu and the `CodeBlocks::documentation()` setup page with the 8-step recipe and the privacy warning.
+- [x] Create the model-layer class with `$documents` (demo doc only), `$storagePath`, the privacy warning, and the no-group-scope comment.
+- [x] Implement regenerate logic: Doc ID validation, fetch, PDF validation, atomic write.
+- [x] Create the unprefixed `DocumentationController` with the disclaimer and privacy `WARNING`; `regenerate` as GET + `?code=` with the MVP-exception comment.
+- [x] Read `DOCUMENTATION_REGENERATE_CODE` (ENV Vars pattern); regenerate disabled when unset.
+- [x] Implement `file` with inline streaming.
+- [x] Add PDF.js to the project assets.
+- [x] Implement `view` with page argument; all URLs (file with version query, own tab, regenerate) built in the controller.
+- [x] Add the modal and the "View in its own tab" button.
+- [x] Create `TMP/documentation/` on first regenerate if missing; add `/sourceFiles/tmp/documentation/` to `.gitignore`.
+- [x] Add the `Documentation` link to the Blocks menu and the `CodeBlocks::documentation()` setup page with the 8-step recipe and the privacy warning.
 - [ ] Run the manual scenarios in `## Testing`.
 
 ## Testing
@@ -279,21 +282,22 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 **Intent:** The stored PDF is refreshed from Google only when a valid PDF is fetched; a failure never damages the existing file.
 
+**Verification notes (2026-10-14):** no real link-shared demo doc is configured yet, so the success scenarios are unverified. Failure handling was checked by calling the service directly: placeholder/invalid Doc ID gives 400, a non-existent Doc ID gives Google HTTP 404 and a clear message, and in both cases the existing PDF was unchanged. A private (not link-shared) doc was not tested.
+
 **Surfaces:**
 - `GET /en/documentation/regenerate/{key}?code=<code>`
 - Documentation model-layer class
 
 #### Scenarios
 
-- [ ] A wrong or missing `code` returns 404 and changes nothing.
-- [ ] With `DOCUMENTATION_REGENERATE_CODE` unset, regenerate returns 404 even with a `code` given.
-
+- [x] A wrong or missing `code` returns 404 and changes nothing.
+- [x] With `DOCUMENTATION_REGENERATE_CODE` unset, regenerate returns 404 even with a `code` given.
 - [ ] Regenerating a link-shared doc saves the PDF under its fixed filename and shows a confirmation with timestamp.
 - [ ] Regenerating again overwrites the same file; existing view links keep working and show the new content.
 - [ ] A doc that is not link-shared (Google returns HTML) fails with a clear message and the existing PDF is unchanged.
 - [ ] A network failure or timeout fails with a clear message and the existing PDF is unchanged.
-- [ ] An unknown key returns 404.
-- [ ] The view page does not show the code or a regenerate link.
+- [x] An unknown key returns 404.
+- [x] The view page does not show the code or a regenerate link.
 
 ### File Streaming
 
@@ -304,11 +308,11 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] The PDF is returned inline (`application/pdf`).
-- [ ] An unknown key returns 404.
-- [ ] A key whose PDF has not been generated yet returns 404 with a clear message.
-- [ ] The response never reveals the internal storage path.
-- [ ] The PDF is not reachable by any URL under the web root.
+- [x] The PDF is returned inline (`application/pdf`).
+- [x] An unknown key returns 404.
+- [x] A key whose PDF has not been generated yet returns 404 with a clear message.
+- [x] The response never reveals the internal storage path.
+- [x] The PDF is not reachable by any URL under the web root.
 
 ### Viewer
 
@@ -320,13 +324,13 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] `view/1` opens doc 1 on page 1.
-- [ ] `view/1/22` opens doc 1 on page 22.
-- [ ] A non-numeric or zero page opens page 1.
-- [ ] A page beyond the end opens the last page.
+- [x] `view/1` opens doc 1 on page 1.
+- [x] `view/1/22` opens doc 1 on page 22.
+- [x] A non-numeric or zero page opens page 1.
+- [x] A page beyond the end opens the last page.
 - [ ] After regenerate, the viewer loads the new content (version query changed), not a cached copy.
 - [ ] The modal and "View in its own tab" both open the same doc and page.
-- [ ] The viewer layout works at phone width.
+- [x] The viewer layout works at phone width.
 
 ### Core Demo Access
 
@@ -337,9 +341,9 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] A logged-out user can open `/en/documentation/view/1` in core.
-- [ ] The controller source contains the privacy `WARNING` block.
-- [ ] The model-layer class contains the privacy warning next to `$documents`.
+- [x] A logged-out user can open `/en/documentation/view/1` in core.
+- [x] The controller source contains the privacy `WARNING` block.
+- [x] The model-layer class contains the privacy warning next to `$documents`.
 - [ ] Core is configured with a non-sensitive demo doc only.
 
 ### Client Project Privacy
@@ -367,12 +371,12 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] The Blocks group shows a `Documentation` link.
-- [ ] The link opens the Documentation setup page with title, subtitle, and rendered source files.
-- [ ] The link is highlighted as active while on that page.
-- [ ] The privacy warning is visible at the top of the page.
-- [ ] The "move under a prefix" step is present and marked required.
-- [ ] The setup page links to the working public demo.
-- [ ] Every file the recipe tells you to copy is shown on the page from its real SetupCase core path.
-- [ ] The page contains no client names, real Doc IDs, or real URLs.
+- [x] The Blocks group shows a `Documentation` link.
+- [x] The link opens the Documentation setup page with title, subtitle, and rendered source files.
+- [x] The link is highlighted as active while on that page.
+- [x] The privacy warning is visible at the top of the page.
+- [x] The "move under a prefix" step is present and marked required.
+- [x] The setup page links to the working public demo.
+- [x] Every file the recipe tells you to copy is shown on the page from its real SetupCase core path.
+- [x] The page contains no client names, real Doc IDs, or real URLs.
 - [ ] Following only the setup page, the feature can be installed in a fresh client project and the Regenerate, File Streaming, Viewer, and Client Project Privacy scenarios pass there.
