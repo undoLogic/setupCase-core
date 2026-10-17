@@ -295,6 +295,92 @@ sourceFiles/
 
 ---
 
+# CSS/JS File Organization
+
+Use one CSS file and one JS file per feature, not one site-wide file.
+
+- A new feature gets its own file, named in kebab-case to match its feature
+  doc, e.g. `walkthroughs.css` and `walkthroughs.js`.
+- Styles and scripts used by only one feature go in that feature's file.
+- Load a feature file from that feature's template or element, not the global
+  layout.
+- Prefix selectors with the feature name (`.walkthroughs-*`) so styles cannot
+  leak into other features.
+- Do not split a feature file into sub-files. Large feature files are fine for
+  now.
+- Leave the legacy files (`css/2025/added-styles-V.css`,
+  `css/2025new/added-styles-D.css`) as they are. Do not migrate them unless
+  asked.
+
+---
+
+# Asset Cache Busting (Dated Filenames)
+
+Browsers and CDNs cache CSS and JS aggressively. To guarantee users get the
+current version after a release, a modified asset gets a new filename.
+
+## Rule
+
+When you modify any `.css` or `.js` file under `sourceFiles/webroot/css` or
+`sourceFiles/webroot/js`, rename it so the filename ends in `-YYMMDD`, the
+date of the change:
+
+```text
+walkthroughs.css         -> walkthroughs-261017.css
+walkthroughs-260901.css  -> walkthroughs-261017.css
+walkthroughs-261017.css  -> walkthroughs-261017.css   (already today: edit in place)
+```
+
+- Use today's date in `YYMMDD` format.
+- If the file has no date suffix, add one.
+- If the file has an older date suffix, replace it. Never stack suffixes
+  (`name-260901-261017.css` is wrong).
+- If the file already has today's suffix, edit it in place without renaming. This
+  keeps the filename at one change per day no matter how many edits are made.
+- Rename with `git mv` so history follows the file. Do not leave the old file
+  behind.
+- Only rename files you actually changed. Never rename untouched files
+  in bulk.
+
+## Same-Day Increment (Only When Requested)
+
+If today's version is already live and another change ships the same day,
+the user may ask to increment the filename. Only do this when the user explicitly
+asks. Never increment on your own initiative.
+
+When requested, add an uppercase letter after the date, or advance the existing one:
+
+```text
+walkthroughs-261017.css   -> walkthroughs-261017A.css
+walkthroughs-261017A.css  -> walkthroughs-261017B.css
+```
+
+- Without a request, edit a file that has today's date (with or without a
+  letter) in place.
+- On a new day, drop the letter: `walkthroughs-261017B.css -> walkthroughs-261018.css`.
+- The same `git mv` and reference-update rules apply.
+
+## Update Every Reference
+
+A rename is not complete until nothing points at the old name. In the same change:
+
+- Search the whole repo for the old base name, e.g.
+  `grep -rn "walkthroughs" sourceFiles/templates sourceFiles/src`.
+- Update every reference, such as `$this->Html->css('walkthroughs')` and
+  `$this->Html->script('walkthroughs')` calls, layouts, elements, and other
+  CSS/JS files that import it.
+- Report every updated reference in your summary.
+
+## Exclusions
+
+- Vendor assets under `sourceFiles/webroot/modules`: never edit or rename them
+  (see File Editing Rules).
+- Minified third-party libraries such as `*.min.js` and `*.min.css`, and files
+  with a version already in the name, such as `vue.2.6.14.js`.
+- Files outside `sourceFiles/webroot/css` and `sourceFiles/webroot/js`.
+
+---
+
 # Database Schema Changes
 
 - Record all new database SQL changes in:
