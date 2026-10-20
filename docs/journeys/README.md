@@ -233,7 +233,8 @@ Each step is a `##` heading followed by `- key: value` lines, in this order:
 | `expect`      | always | A selector that must be **visible** after the action. |
 | `dialog`      | optional | `accept` or `dismiss`. The action opens a browser `confirm()`/`alert()` box; the runner answers it. |
 | `expect_text` | optional | Text that must appear on the page after the action. |
-| `caption`     | always | The explanation shown below the screenshot. |
+| `capture`     | optional | `true`: page mode captures the screen right after this step, as it is (e.g. an open autocomplete list). See [Capture modes](#capture-modes). |
+| `caption`     | always | The explanation shown below the screenshot. In page mode only the caption of a step that leaves the screen is shown. |
 
 ### Actions
 
@@ -266,7 +267,7 @@ A field the action doesn't use must not be written. A missing required field, an
 2. Wait for `document.readyState === 'complete'` (this covers the page load after a click submits a form).
 3. Wait for `expect` to be visible (timeout: 10 seconds). This replaces fixed sleeps - the step goes on as soon as the screen is ready.
 4. If `expect_text` is set, wait for that text to appear.
-5. Capture **one screenshot**.
+5. Capture - after every step in step mode, or once per screen in page mode (see [Capture modes](#capture-modes)).
 
 If any part fails, the run stops. The runner reports the failing step and saves a debug screenshot outside the PDF output. A PDF is never built from a partial run.
 
@@ -278,6 +279,28 @@ If any part fails, the run stops. The runner reports the failing step and saves 
 - Selectors are standard CSS, exactly as `document.querySelector()` accepts them. Tool-specific extensions such as Playwright's `:has-text()` are not supported.
 - Values are single-line.
 - Blank lines are ignored. Any other line inside a step is an error.
+
+---
+
+## Capture modes
+
+`run.sh` takes `JOURNEY_CAPTURE_MODE=page|step` (`journey_runner.py --capture-mode`), default `page`.
+
+- **`step`**: one capture per step, captioned with the step's `caption`.
+- **`page`**: one capture per screen, with every field filled in.
+
+How page mode groups steps:
+
+- **Filling steps** (`fill`, `select`, `editor`, `upload`, `email_code`) join the current screen.
+- **Every other action leaves the screen** (`goto`, `click`, `wait`, `email_preview`, `email_attachments`, and any login/user-switch action a project adds). The screen is captured just before it runs, and the leaving step opens the next screen. So a revisited page, a validation error after a submit, or the same URL after a user switch is always a new capture.
+- `capture: true` on a filling step captures the screen right after that step, without scrolling, and the steps after it start a new capture.
+
+Each capture of a screen with filled fields:
+
+- **Split by scroll, never shrink.** The first capture is at the top of the page. The runner then scrolls so the first field not yet shown sits just below any fixed/sticky header, and captures again, until every field has appeared complete in one capture. A field taller than the screen is shown once, from its top.
+- **Numbered badges.** Each field shown gets a numbered badge (one colour, white number, dark outline) on its left edge. Badges are numbered in reading order and restart at 1 on every capture. Hidden widgets (bootstrap-select, select2, TinyMCE) get the badge on their visible box, and checkboxes and radios on their label. Badges are fixed-position, ignore clicks, and are removed straight after the capture.
+- **Compact caption.** One paragraph: the leaving step's `caption` (first capture of the screen only), then `[n] Label: value` for each field shown. The label comes from the page (`<label>`, `aria-label`, then `placeholder`), falling back to the step title. Values over 15 characters are cut with an ellipsis. `editor` values have their HTML stripped, `email_code` shows the code that was read.
+- **Filling steps' own captions are not shown** in page mode, to keep the caption a short legend. They stay required, so the same journey still runs in step mode.
 
 ---
 
@@ -338,25 +361,24 @@ A journey is a **client walkthrough, not a test**.
 ## Screenshots
 
 - Browser viewport: **1920 x 1080**, device scale factor 1, desktop (set with CDP `Emulation.setDeviceMetricsOverride`). The InternalTesting driver hard-codes 1440 x 1000 - the journey runner must use 1920 x 1080.
-- Captured at **16:9**, uncropped and unannotated. Capture the viewport, not the full page.
-- Files are written as `<output>/<run-name>/NN-<title-slug>.png`, e.g. `screenshots/2026-09-29_14-05-32-journey-customize-to-submit/02-change-your-phone-number.png`. `<run-name>` is the PDF's file name without `.pdf` (see [PDF layout](#pdf-layout)), so each run's PDF and screenshot folder sit side by side with the same name - delete both together when a run is no longer needed. The number comes from the step's position at run time; it is never written in the journey file.
-- Nothing is drawn over the screenshot. The image stays clean so nothing important is ever covered.
+- Captured at **16:9**, uncropped. Capture the viewport, not the full page. In page mode, numbered badges are drawn on the filled fields (see [Capture modes](#capture-modes)); in step mode nothing is drawn over the screenshot.
+- Files are written as `<output>/<run-name>/NN-<title-slug>.png`, e.g. `screenshots/2026-09-29_14-05-32-journey-customize-to-submit/02-change-your-phone-number.png`. `<run-name>` is the PDF's file name without `.pdf` (see [PDF layout](#pdf-layout)), so each run's PDF and screenshot folder sit side by side with the same name - delete both together when a run is no longer needed. The number is the capture's position in the PDF (in step mode, the step's position); it is never written in the journey file.
 
 ---
 
 ## PDF layout
 
 - **File name:** `<output>/<run-name>.pdf`, where `<run-name>` is `YYYY-MM-DD_HH-II-SS-<journey-file-name>`, stamped with the local date and time the run started, e.g. `2026-09-29_14-05-32-journey-customize-to-submit.pdf`. The run's screenshots go in a folder with the same `<run-name>`. Every run makes a new PDF and folder, so earlier runs are never overwritten and sort by date. The time uses `-`, not `:`, because Windows and macOS don't allow `:` in file names and the PDF is sent to clients.
-- **Landscape A4**, one step per page, after a cover page laid out top to bottom as: `Client: <client> / Project: <project>`, the `name`, the `description`, the Automated Build banner, and the logo at the bottom.
+- **Landscape A4**, one capture per page, after a cover page laid out top to bottom as: `Client: <client> / Project: <project>`, the `name`, the `description`, the Automated Build banner, and the logo at the bottom.
 - **Automated Build banner:** the cover always carries, between the description and the logo, a large "AUTOMATED BUILD" title, a line explaining the walkthrough was generated automatically from the application and that, on request, the software can be promptly updated and an updated build delivered, and the date and time it was generated. It tells the client the PDF is a by-product of the tooling, not billable manual work. The wording is fixed in the runner so every project says the same thing.
 - **Cover logo:** if `docs/journeys/logo.png` exists, the cover shows it centred at the bottom of the page (max 30 mm tall, 60 mm wide, aspect ratio kept). One logo per project, used by every journey. Use a PNG with a transparent or white background. No file, no logo - the run doesn't fail.
-- **Above** the image: `Step N of M` and the step title.
+- **Above** the image: `Step N of M` (N counts captures) and the title of the step that opened the screen.
 - **Middle**: the 16:9 screenshot.
 - **Below** the image: the caption, as a band beneath the picture - never overlaid on it.
 
 Titles and captions are real PDF text, not pixels. They stay sharp at any zoom, are searchable, and can be reworded and re-rendered **without re-running the browser**.
 
-Page numbers match step numbers, so "page 4 looks wrong" means the same thing to you and the client.
+"Step N" numbers match the PDF pages after the cover, so "step 4 looks wrong" means the same thing to you and the client.
 
 The PDF is built by the same headless Chromium: the builder writes an HTML page (cover plus one page per step, with the screenshots and text) and prints it with CDP `Page.printToPDF` (`landscape: true`, A4 = 11.69 x 8.27 in, `printBackground: true`). No PDF library is needed.
 
@@ -384,6 +406,8 @@ That is the whole manual process - no AI, no tokens. `run.sh`:
 Options:
 
 - Second argument: the output folder (default `screenshots`), e.g. `run.sh docs/journeys/x.md /tmp/out`.
+- `JOURNEY_CAPTURE_MODE=step` for one capture per step (default `page`, see [Capture modes](#capture-modes)).
+- `JOURNEY_BASE_URL` if the Docker site is not served at `http://localhost`.
 - The database container for `email_*` actions is `<PROJECT_NAME>-db-1`, read from `dockerLinux/.env`. Pass `--db <container>` to `journey_runner.py` directly if a project differs.
 
 If a step fails, the run stops with `FAILED at step N "<title>": <reason>` and the path of a debug screenshot. No PDF is built. The usual causes: a selector changed in a template, the Docker stack isn't running, or port 9222 is still held by another Chromium (`pkill -f "remote-debugging-por[t]=9222"`).
@@ -450,8 +474,7 @@ Differences from `cdp.py` that the runner must fix:
 
 ## Out of scope (for now)
 
-- Arrows, highlight boxes, or any drawing on the screenshot. The target is already known per step, so this is easy to add later - but captions come first.
-- Multiple screenshots per step.
+- Arrows or connector lines from badges to captions, highlight boxes, and per-journey badge colours.
 - Branching journeys. If a flow branches, write two journeys.
 - More than one login role. There is one AI user; if journeys need different roles, that is a future `login:` value.
 - Other languages. A French walkthrough is a separate journey file with `/fr/` paths.
@@ -474,7 +497,7 @@ To settle before the runner is built:
 1. Check the [Prerequisites](#prerequisites) are in place for this project.
 2. Create `docs/journeys/<flow-name>.md`.
 3. Add front matter: `name`, `description`, `login`, `start_url`, and `feature` if one exists.
-4. Add one `##` step per screen the person sees, with the fields its action requires.
+4. Add one `##` step per action the person takes (each field they fill, each click), with the fields its action requires. Page mode merges the fields of one screen into a single capture.
 5. Give every `expect` a selector that proves the screen is ready; add `data-testid` to templates where needed.
 6. Keep titles <= 40 characters and captions <= 140 characters.
 7. Don't write step numbers anywhere.
