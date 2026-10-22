@@ -1,4 +1,4 @@
-# AGENTS.md
+# AGENTS.md From SetupCase-CORE an undoLogic technology
 
 ## Purpose
 Repository-specific instructions for development, code reviews, refactoring, and collaboration.
