@@ -227,10 +227,21 @@ Use this checklist for security updates, CakePHP upgrades, or adding/upgrading a
 
 **The rule:** `sourceFiles/vendor/` is committed to git. Composer runs only in development. Production receives the exact files that were tested, and **never runs `composer install` or `composer update`**.
 
+Because `vendor/` is built in development, development and production must run the same PHP version (see [Upgrading the PHP Version on a Project](#upgrading-the-php-version-on-a-project)).
+
 ## 1. Before You Start
 
 - [ ] Working tree is clean (`git status` shows nothing), so the vendor change can be its own commit.
 - [ ] You know why you are updating (security advisory, new CakePHP version, new package) and which packages should change.
+- [ ] `config.platform.php` in `sourceFiles/composer.json` matches the PHP version production runs, so Composer picks packages for production, not for your local Docker:
+
+  ```json
+  "config": {
+      "platform": {
+          "php": "8.3"
+      }
+  }
+  ```
 - [ ] Note the current versions, to compare afterwards:
 
   ```bash
@@ -286,6 +297,7 @@ Run Composer inside your development environment (the local Docker web container
 ## 6. Deploy
 
 - [ ] Deploy to **pending** first, the same way as any other release.
+- [ ] Run `composer check-platform-reqs` on pending to confirm the host has every PHP extension the packages need.
 - [ ] Repeat the step 4 checks on pending.
 - [ ] Deploy to **live**.
 - [ ] Repeat the login check and a quick look at the main pages on live.
