@@ -33,6 +33,8 @@ This allows SetupCase to continuously evolve based on **real production software
 
 Maintaining SetupCase Core itself (moving improvements from `testFlight` to `main`)? See [Maintaining SetupCase Core](#maintaining-setupcase-core-testflight---main) at the end of this file.
 
+Upgrading CakePHP or other Composer packages on a project? See [Upgrading Vendor (Composer) on a Project](#upgrading-vendor-composer-on-a-project).
+
 ## Creating a New Project from SetupCase Core
 
 SetupCase Core is used as the starting point for new SetupCase projects.
@@ -214,6 +216,83 @@ The project is now ready for project-specific configuration and development.
 - Using the Cloud environment means you **do not need to close, rebuild, or restart Docker containers** every time you move between projects.
 
 > **Local Docker is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.**is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.
+
+---
+
+# Upgrading Vendor (Composer) on a Project
+
+Use this checklist for security updates, CakePHP upgrades, or adding/upgrading a package. Follow every step, every time, even when it feels routine.
+
+**The rule:** `sourceFiles/vendor/` is committed to git. Composer runs only in development. Production receives the exact files that were tested, and **never runs `composer install` or `composer update`**.
+
+## 1. Before You Start
+
+- [ ] Working tree is clean (`git status` shows nothing), so the vendor change can be its own commit.
+- [ ] You know why you are updating (security advisory, new CakePHP version, new package) and which packages should change.
+- [ ] Note the current versions, to compare afterwards:
+
+  ```bash
+  composer show cakephp/cakephp cakephp/authentication
+  ```
+
+## 2. Update (in Development Only)
+
+Run Composer inside your development environment (the local Docker web container, or the Cloud development server), from the `sourceFiles/` folder.
+
+- [ ] Choose the kind of update:
+
+  | Goal | Do |
+  |---|---|
+  | Security / patch updates within the current versions | `composer update` |
+  | One package only | `composer update vendor/package --with-dependencies` |
+  | New major/minor version (e.g. CakePHP) | Edit the version in `composer.json` first, then `composer update` |
+
+- [ ] If the update fails on a version change, delete the `vendor/` folder and run `composer update` again.
+- [ ] Check for known vulnerabilities:
+
+  ```bash
+  composer audit
+  ```
+
+- [ ] Compare with the versions noted in step 1 (`composer show ...`). Only the packages you expected should have moved.
+
+## 3. Review the Changes
+
+- [ ] `git status` shows changes only in `sourceFiles/composer.json`, `sourceFiles/composer.lock` and `sourceFiles/vendor/`.
+- [ ] `composer.lock` changed. If it did not, nothing was updated.
+- [ ] No project code was changed by the update. If code changes are needed for a new version, they go in a separate commit after this one.
+
+## 4. Test in Development
+
+- [ ] The site loads with no PHP / CakePHP errors or deprecation warnings.
+- [ ] Login and logout work.
+- [ ] The main pages of the project work (and `/en/code-blocks` on SetupCase Core).
+- [ ] Automated tests pass, if the project has them: `vendor/bin/phpunit`
+- [ ] `sourceFiles/logs/error.log` has no new errors.
+
+## 5. Commit and Push
+
+- [ ] Stage only `sourceFiles/composer.json`, `sourceFiles/composer.lock` and `sourceFiles/vendor/`.
+- [ ] Commit the vendor update on its own, with the versions in the message, e.g.:
+
+  ```text
+  VENDOR: composer update - cakephp/cakephp 4.6.5 -> 4.6.6
+  ```
+
+- [ ] Push.
+
+## 6. Deploy
+
+- [ ] Deploy to **pending** first, the same way as any other release.
+- [ ] Repeat the step 4 checks on pending.
+- [ ] Deploy to **live**.
+- [ ] Repeat the login check and a quick look at the main pages on live.
+- [ ] Do not run Composer on pending or live.
+
+## If Something Goes Wrong
+
+- Revert the vendor commit (`git revert <commit>`), push, and deploy again. This restores the previous `vendor/` exactly.
+- Because the update has its own commit, reverting it never removes other work.
 
 ---
 

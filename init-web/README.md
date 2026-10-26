@@ -9,10 +9,4 @@ Build up a CakePHP business website or online softare
 
 
 ## Upgrade to new version of CakePHP
-Modify the composer.json file
-- Choose the desired version of cakePHP
-- Delete the vendor folder
-- Run composer update
-```shell
-composer update
-```
+Follow the checklist in the root `README.md`: "Upgrading Vendor (Composer) on a Project".
