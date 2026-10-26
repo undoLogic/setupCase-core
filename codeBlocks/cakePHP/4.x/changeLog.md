@@ -6,6 +6,27 @@ See `docs/features/SetupCase-Core-Platform-Build-and-CodeBlocks-Workflow.md`.
 
 ---
 
+## 2026-10-26 - Documentation (MVP)
+
+Mirrors a link-shared Google Doc as a PDF on the project's own domain and serves it through a PDF.js viewer with page links (`/en/documentation/view/{key}/{page}`), a modal, copy-link and download. Public in core for the demo; must be moved under a logged-in prefix on projects. See `docs/features/MVP-documentation.md`.
+
+- Source commit: `9191b3ab`
+
+### Included
+
+- sync: `src/Controller/DocumentationController.php`, `src/Service/DocumentationService.php` - view, file, regenerate (GET + `?code=`, MVP exception)
+- sync: `templates/Documentation/view.php`, `templates/element/2026/documentation/view_viewer.php`, `view_modal.php`, `templates/layout/documentation_embed.php`
+- sync: `webroot/js/documentation-viewer.js`
+- sync: `webroot/modules/pdfjs-3.11.174/` (PDF.js vendor asset, untouched)
+- sync: `CodeBlocksController::documentation()`, `templates/CodeBlocks/documentation.php`, `templates/element/2026/codeBlocks/documentation.php` - setup page
+- transform: `init-web/9-Install-CodeBlocks_appController.php` - `Documentation` link in the Blocks menu
+
+### Excluded
+
+- `.gitignore` line `/sourceFiles/tmp/documentation/` - root factory file, not part of CodeBlocks; copied to `main` by hand (not covered by `import_from_testflight.sh`)
+
+---
+
 ## 2026-09-24 - ENV Vars: Server First
 
 Config values are read from the server `php.ini` first (prod), then the Docker environment (local), then a default: `get_cfg_var('X') ?: env('Y') ?: 'default'`.

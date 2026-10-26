@@ -157,6 +157,31 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_renderVar', []);
     }
 
+    public function documentation()
+    {
+        $this->set('codeBlocks_title', 'Documentation');
+        $this->set(
+            'codeBlocks_subTitle',
+            'Mirror a link-shared Google Doc as a PDF on this domain, viewable with page links. Setup guide for client projects.'
+        );
+
+        $view = ['prefix' => false, 'controller' => 'Documentation', 'action' => 'view', 'language' => 'en'];
+        $this->set('docModalTitle', 'Project Documentation');
+        $this->set('docModalUrl', Router::url($view + [1, 2, '?' => ['embed' => 1]]));
+        $this->set('docOwnTabUrl', Router::url($view + [1, 2]));
+
+        $this->set('codeBlocks_renderFiles', [
+            'Controller' => APP . 'Controller/DocumentationController.php',
+            'Service (config + logic)' => APP . 'Service/DocumentationService.php',
+            'View template' => APP . '../templates/Documentation/view.php',
+            'Element: viewer' => APP . '../templates/element/2026/documentation/view_viewer.php',
+            'Element: modal' => APP . '../templates/element/2026/documentation/view_modal.php',
+            'Layout: modal embed' => APP . '../templates/layout/documentation_embed.php',
+            'Viewer JS' => WWW_ROOT . 'js/documentation-viewer.js',
+        ]);
+        $this->set('codeBlocks_renderVar', []);
+    }
+
     public function envVars()
     {
         $this->set('codeBlocks_title', 'ENV Vars');
