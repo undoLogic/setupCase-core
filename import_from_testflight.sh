@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Import factory files (CodeBlocks, build scripts, docs, dockerLinux) from testFlight into the current branch (normally main).
+# Import factory files (CodeBlocks, build scripts, docs, dockerLinux, AGENTS.md, README.md) from testFlight into the current branch (normally main).
 # Files are OVERWRITTEN with the source branch version (no merge). To protect edits made directly on this
 # branch, the import stops if any file here has content that never existed on the source branch.
 # Only updates the working tree - nothing is staged or committed. Review with `git diff`, then stage/commit yourself.
@@ -18,6 +18,7 @@ PATHS=(
     docs
     dockerLinux
     AGENTS.md
+    README.md
 )
 
 cd "$(dirname "$0")"

@@ -51,6 +51,15 @@ $dirs = [
     //Util
     $rootDir . '/sourceFiles/src/Util/SetupCase.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Util/SetupCase.php',
 
+    //Documentation
+    $rootDir . '/sourceFiles/src/Controller/DocumentationController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/DocumentationController.php',
+    $rootDir . '/sourceFiles/src/Service/DocumentationService.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Service/DocumentationService.php',
+    $rootDir . '/sourceFiles/templates/Documentation/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Documentation',
+    $rootDir . '/sourceFiles/templates/element/2026/documentation/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/element/2026/documentation',
+    $rootDir . '/sourceFiles/templates/layout/documentation_embed.php' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/layout/documentation_embed.php',
+    $rootDir . '/sourceFiles/webroot/js/documentation-viewer.js' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/js/documentation-viewer.js',
+    $rootDir . '/sourceFiles/webroot/modules/pdfjs-3.11.174/.' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/modules/pdfjs-3.11.174',
+
     //View helpers
 ];
 

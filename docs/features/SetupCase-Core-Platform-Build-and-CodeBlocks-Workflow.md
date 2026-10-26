@@ -310,6 +310,7 @@ Because `main` has no `sourceFiles/`, promotion to `main` must never carry `sour
 
 - On `testFlight`, keep **feature commits** (touching `sourceFiles/`) separate from **factory commits** (touching `codeBlocks/`, `init-web/`, `docs/`, scripts).
 - Bring factory commits to `main` by cherry-pick, or by checking out only factory paths from `testFlight` onto `main`. Never merge `testFlight` into `main` wholesale.
+- The step-by-step maintainer checklist for this cycle is in the root `README.md` ("Maintaining SetupCase Core"). `./import_from_testflight.sh` imports `codeBlocks/`, `init-web/`, `docs/`, `dockerLinux/`, `AGENTS.md` and `README.md`.
 - `sourceFiles/` is intentionally **not** in `main`'s `.gitignore`. `main` is the GitHub template, and projects created from it are meant to commit their own `sourceFiles/`. Keeping it out of `main` is done by manual staging (AI never runs `git add` / `git commit`, per `AGENTS.md`). If a guard is needed later, add a branch-aware check to `git-hooks/pre-commit` (block `sourceFiles/` only on `main` of the setupCase-core remote).
 - Before building on `main`, delete the whole `sourceFiles/` folder. Checking out `main` removes tracked files but leaves ignored ones (`tmp/`, `logs/`), and `2-Install-Cake.php` skips the CakePHP install whenever `sourceFiles/` exists.
 

@@ -144,6 +144,14 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
+                        'name' => 'Documentation',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'documentation',
+                        ],
+                    ],
+                    [
                         'name' => 'Email Queues',
                         'link' => [
                             'prefix' => false,

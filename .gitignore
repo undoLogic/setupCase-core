@@ -15,6 +15,7 @@
 /sourceFiles/tmp/cache/models/myapp*
 /sourceFiles/tmp/cache/persistent/myapp*
 /sourceFiles/tmp/debug*
+/sourceFiles/tmp/documentation/
 /sourceFiles/logs/*.log
 
 ### temp cake download files
