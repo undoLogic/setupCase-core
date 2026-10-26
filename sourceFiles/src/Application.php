@@ -137,10 +137,6 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
             'fields' => $fields,
         ]);
         $authenticationService->loadAuthenticator('Authentication.Session');
-        $authenticationService->loadAuthenticator('Authentication.Form', [
-            'fields' => $fields,
-            'loginUrl' => $loginUrl,
-        ]);
         $authenticationService->loadAuthenticator('Authentication.Cookie', [
             'fields' => $fields,
             'loginUrl' => $loginUrl,
@@ -149,6 +145,12 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
                 'expires' => strtotime('+30 days'),
                 'httponly' => true,
             ],
+        ]);
+        // Form stays last: on failure the service returns the last result, which
+        // UsersController::login() reads for the Login Throttling message
+        $authenticationService->loadAuthenticator(\App\Authenticator\ThrottledFormAuthenticator::class, [
+            'fields' => $fields,
+            'loginUrl' => $loginUrl,
         ]);
         return $authenticationService;
     }

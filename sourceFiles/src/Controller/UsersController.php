@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Authenticator\ThrottledFormAuthenticator;
 use App\Util\SetupCase;
 use Cake\Core\Configure;
 use Cake\Event\EventInterface;
@@ -236,9 +237,15 @@ class UsersController extends AppController
             return $this->redirect($redirect);
         }
         // display error if user submitted and authentication failed
+        // Same messages whether or not the account exists (Login Throttling)
         if ($this->request->is('post') && !$result->isValid()) {
-            $errors = ((array)$result);
-            $this->Flash->error('Login error: ' . json_encode($errors));
+            if ($result->getStatus() === ThrottledFormAuthenticator::FAILURE_THROTTLED) {
+                // 429 lets access logs, fail2ban or a CDN act on blocks at the server level
+                $this->response = $this->response->withStatus(429);
+                $this->Flash->error('Too many failed login attempts. Please try again in a few minutes.');
+            } else {
+                $this->Flash->error('Email or password is incorrect.');
+            }
         }
     }//login
 

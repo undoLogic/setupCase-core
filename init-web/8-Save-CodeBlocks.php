@@ -44,12 +44,17 @@ $dirs = [
 
     //Schema
     $rootDir . '/sourceFiles/config/schema/2026-09-08.sql' => $rootDir . '/codeBlocks/cakePHP/4.x/config/schema/2026-09-08.sql',
+    $rootDir . '/sourceFiles/config/schema/2026-10-26.sql' => $rootDir . '/codeBlocks/cakePHP/4.x/config/schema/2026-10-26.sql',
 
     //Config
     $rootDir . '/sourceFiles/config/app_DEV.php' => $rootDir . '/codeBlocks/cakePHP/4.x/config/app_DEV.php',
 
     //Util
     $rootDir . '/sourceFiles/src/Util/SetupCase.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Util/SetupCase.php',
+
+    //Login Throttling
+    $rootDir . '/sourceFiles/src/Authenticator/.' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Authenticator',
+    $rootDir . '/sourceFiles/src/Model/Table/LoginAttemptsTable.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Table/LoginAttemptsTable.php',
 
     //Documentation
     $rootDir . '/sourceFiles/src/Controller/DocumentationController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/DocumentationController.php',

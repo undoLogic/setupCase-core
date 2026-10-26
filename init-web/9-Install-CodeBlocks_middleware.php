@@ -19,7 +19,6 @@
 Ensure you import the required classes at the top of the file
 
 ```php
-    use App\Authenticator\FormLoginAttemptsAuthenticator;
     use Cake\Http\Middleware\EncryptedCookieMiddleware;
 ```
 ```

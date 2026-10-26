@@ -160,6 +160,14 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
+                        'name' => 'Login Throttling',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'loginThrottling',
+                        ],
+                    ],
+                    [
                         'name' => 'Responsive Table',
                         'link' => [
                             'prefix' => false,

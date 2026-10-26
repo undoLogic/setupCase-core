@@ -39,6 +39,7 @@ The throttle runs **inside the authenticator**, before the password is checked.
 
 - `App\Authenticator\ThrottledFormAuthenticator` extends `Authentication\Authenticator\FormAuthenticator` (`src/Authenticator/` is the Authentication plugin's convention).
 - It replaces `Authentication.Form` in `Application::getAuthenticationService()`, with the same `fields` and `loginUrl`.
+- It is loaded **after** `Authentication.Cookie` (order: Session, Cookie, ThrottledForm). When every authenticator fails, the service returns the result of the last one, and `UsersController::login()` needs the form's result to show the right message. With Form before Cookie, the controller would only ever see the cookie's "credentials missing".
 - Why not in `UsersController::login()`: by the time the controller runs, the middleware has already checked the password and, on success, stored the identity in the session. Blocking there would mean undoing a login that already happened.
 
 Flow for a login POST:
@@ -55,13 +56,14 @@ Flow for a login POST:
 - **IP:** `$request->clientIp()`.
 - **Username:** the submitted `email` field, `trim()` + `mb_strtolower()`.
 - Stored as `username_hash` = SHA-256 of the normalized username, not the raw text. People sometimes type their password into the username field; it must never be written to the database.
-- An empty username still counts (hash of the empty string), so blank submissions are throttled too.
+- A POST with an empty email or password is not counted: `FormAuthenticator` rejects it as "credentials missing" without checking any password.
 
 ### Limit and cooldown (rolling window)
 
 - `maxFailures` (default `5`) and `windowMinutes` (default `5`).
 - A key is blocked while it has `maxFailures` or more failed attempts inside the last `windowMinutes`.
 - The block lifts on its own as older failures age out of the window. With the defaults, an attacker is blocked for at most 5 minutes after the 5th failure, which is the "cooldown" from the Purpose section.
+- **IP-wide cap:** `maxFailuresPerIp` (default `50`). An IP is also blocked for every username once it has that many failures in the window. Without it, rotating usernames gives an attacker unlimited (deliberately slow) password checks from one IP.
 - Configured as properties on the Table class (same "config in the model-layer class" shape as the Documentation block). No settings UI.
 
 **Decision to verify:** one setting (`windowMinutes`) serves as both the counting window and the cooldown. A separate cooldown length can be added later if needed.
@@ -71,14 +73,23 @@ Flow for a login POST:
 - **Blocked:** `Too many failed login attempts. Please try again in a few minutes.`
 - **Wrong email or password:** `Email or password is incorrect.` This replaces the current `json_encode($errors)` flash.
 - Both messages are identical whether or not the account exists.
-- The page is re-rendered as usual (HTTP 200). No exact unblock time is shown.
+- Wrong email or password re-renders the login page with HTTP 200.
+- Blocked re-renders the same login page with **HTTP 429** (Too Many Requests), so a person who mistyped still gets a usable page. The status makes blocks visible in access logs and monitoring, and gives fail2ban or a CDN something to act on.
+- No exact unblock time is shown.
+
+### Server load
+
+- A blocked attempt skips the expensive parts: no password hash check and no database write. It still costs the PHP / CakePHP bootstrap and one indexed count.
+- A bare "no assets" error page would save little. Brute-force scripts only POST the form and never load CSS / JS, and browsers serve those from cache.
+- PHP cannot protect itself from a flood: each request boots PHP before this check runs. Flood protection belongs in front of the app (CDN rate limiting, `mod_evasive`, fail2ban on `429` responses for the login URL). Out of scope for this feature.
 
 ### Real IP behind a proxy / CDN
 
 - Default: proxies are **not** trusted; `clientIp()` uses `REMOTE_ADDR`, which cannot be faked.
 - To trust a proxy, set `TRUSTED_PROXIES` (comma-separated IPs) using the ENV Vars pattern: server value first, then Docker env: `get_cfg_var('TRUSTED_PROXIES') ?: env('TRUSTED_PROXIES') ?: ''`.
-- When set, the authenticator calls `$request->setTrustedProxies([...])` before reading `clientIp()`. Only then are `X-Forwarded-For` headers from those proxies used.
-- Never trust forwarded headers from everyone (`trustProxy = true` without a list).
+- When set, `X-Forwarded-For` is used **only if `REMOTE_ADDR` is one of the listed proxies**. The client IP is the right-most forwarded address that is not a listed proxy (left-most entries can be faked by the client).
+- Do not use CakePHP's `ServerRequest::setTrustedProxies()` / `clientIp()` for this. Once a list is set, it trusts `X-Forwarded-For` from any sender without checking `REMOTE_ADDR` against the list (found while building, CakePHP 4.6).
+- Proxies are exact IP matches; CIDR ranges are not supported.
 
 ### Data scoping (AGENTS.md exception)
 
@@ -92,6 +103,17 @@ Flow for a login POST:
 
 - Remember-me cookie logins (`Authentication.Cookie`) and the password reset form (`UsersController::beginReset()` / `reset()`) are not throttled.
 - No admin screen to view or clear blocks.
+
+## CodeBlocks Page
+
+A **Login Throttling** entry in the Blocks menu (`/en/code-blocks/login-throttling`) shows how the feature works before it is used on a project.
+
+- Menu: after `Email Queues` in the Blocks group of `AppController::setupMenu()` (and the `9-Install-CodeBlocks_appController.php` transform). Not under **Blocks with DB**, which lists CRUD demos.
+- `CodeBlocksController::loginThrottling()` follows the `emailQueues()` pattern: title, subtitle, and `codeBlocks_renderFiles` (schema, Table, authenticator) shown straight from the source.
+- The current limits come from `LoginAttemptsTable::settings()`, so the page can never disagree with the code. The login link is built in the controller (passive view).
+- `templates/CodeBlocks/login_throttling.php` renders only the element `2026/codeBlocks/login_throttling`.
+- Content: basic-safeguard warning, current settings, how it works, the two messages, a "try it" walkthrough (watch `login_attempts` in phpMyAdmin), proxy setup, project setup, known limitations.
+- The page shows no attempt data (IPs or hashes). It is public in core, so it must not expose who is trying to log in.
 
 ## Database
 
@@ -121,7 +143,8 @@ Public methods return at least `['STATUS' => ..., 'MSG' => ...]`; helpers are pr
 
 | Method | Purpose | Extra response data |
 |---|---|---|
-| `isBlocked($ip, $username)` | Count failures for the key inside the window | `blocked` (bool) |
+| `settings()` | Current limits for the CodeBlocks page | `maxFailures`, `maxFailuresPerIp`, `windowMinutes` |
+| `isBlocked($ip, $username)` | Count failures inside the window, for the key and for the whole IP | `blocked` (bool) |
 | `recordFailure($ip, $username)` | Insert one failure, then purge rows older than the window | none |
 | `clearFailures($ip, $username)` | Delete the rows for the key after a successful login | none |
 
@@ -136,7 +159,7 @@ Public methods return at least `['STATUS' => ..., 'MSG' => ...]`; helpers are pr
 | New Table | `src/Model/Table/LoginAttemptsTable.php` | sync |
 | Schema | `config/schema/2026-10-26.sql` | schema |
 | Replace `Authentication.Form` with `ThrottledFormAuthenticator` | `src/Application.php` | transform (`init-web/9-Install-CodeBlocks_application.php`) |
-| Generic and throttled flash messages | `src/Controller/UsersController.php` | sync |
+| Generic and throttled flash messages, HTTP 429 when blocked | `src/Controller/UsersController.php` | sync |
 | Remove the old attempt | `src/Middleware/FormLoginAttemptsAuthenticator.php`, `src/Model/Table/FormAttemptsTable.php` | delete in `sourceFiles/` and CodeBlocks |
 | Fix the stale note | `init-web/9-Install-CodeBlocks_middleware.php` (comment only) | transform |
 
@@ -145,10 +168,11 @@ Public methods return at least `['STATUS' => ..., 'MSG' => ...]`; helpers are pr
 
 ## Known limitations
 
-- **One IP, many usernames:** an attacker trying one password across many usernames from one IP is only limited per username. An extra IP-wide cap can be added later.
+- **One IP, many usernames:** limited by the IP-wide cap (50 per window). An office behind one IP is blocked for everyone if it reaches the cap in one window.
 - **Many IPs, one username:** a distributed attack (botnet) against one account is only limited per IP.
 - **Shared IP + same username:** two people behind one office IP typing the same username share one counter.
 - **Database growth:** bounded by the purge on each new failure. A quiet site keeps its last few rows until the next failure.
+- **Exact proxy IPs only:** `TRUSTED_PROXIES` does not accept CIDR ranges, so CDNs with large or changing IP ranges need a different approach.
 - **Not a security product:** see the README disclaimer.
 
 ## Implementation Surfaces
@@ -160,20 +184,33 @@ Public methods return at least `['STATUS' => ..., 'MSG' => ...]`; helpers are pr
 - `sourceFiles/config/schema/2026-10-26.sql`
 - `init-web/9-Install-CodeBlocks_application.php`
 - `init-web/8-Save-CodeBlocks.php` (new synced files, removed old ones)
+- `sourceFiles/src/Controller/AppController.php` (`setupMenu()`, Blocks group) and `init-web/9-Install-CodeBlocks_appController.php`
+- `sourceFiles/src/Controller/CodeBlocksController.php` (`loginThrottling()`)
+- `sourceFiles/templates/CodeBlocks/login_throttling.php`
+- `sourceFiles/templates/element/2026/codeBlocks/login_throttling.php`
 
 ## Build checklist
 
-- [ ] Remove the unfinished `FormLoginAttemptsAuthenticator` / `FormAttemptsTable` (sourceFiles + CodeBlocks).
-- [ ] Add `login_attempts` schema in `config/schema/2026-10-26.sql` and run it locally.
-- [ ] Create `LoginAttemptsTable` with `isBlocked`, `recordFailure`, `clearFailures`, the config properties, and the no-group-scope comment.
-- [ ] Create `ThrottledFormAuthenticator` (check before password, record on failure, clear on success, `TRUSTED_PROXIES`).
-- [ ] Swap `Authentication.Form` in `Application.php` and in the `9-Install-CodeBlocks_application.php` transform.
-- [ ] Replace the `json_encode($errors)` flash in `UsersController::login()` with the two fixed messages.
-- [ ] Run the manual scenarios in `## Testing`.
+- [x] Remove the unfinished `FormLoginAttemptsAuthenticator` / `FormAttemptsTable` (sourceFiles + CodeBlocks).
+- [x] Add `login_attempts` schema in `config/schema/2026-10-26.sql` and run it locally.
+- [x] Create `LoginAttemptsTable` with `isBlocked`, `recordFailure`, `clearFailures`, the config properties, and the no-group-scope comment.
+- [x] Create `ThrottledFormAuthenticator` (check before password, record on failure, clear on success, `TRUSTED_PROXIES`).
+- [x] Swap `Authentication.Form` in `Application.php` and in the `9-Install-CodeBlocks_application.php` transform.
+- [x] Replace the `json_encode($errors)` flash in `UsersController::login()` with the two fixed messages.
+- [x] Add the `Login Throttling` CodeBlocks page and Blocks menu entry.
+- [x] Return HTTP 429 when blocked; add the IP-wide cap (`maxFailuresPerIp`).
+- [ ] Run the manual scenarios in `## Testing` (run 2026-10-26; three remain unverified, see the verification notes).
 
 ## Testing
 
 Manual only (MVP). Automated tests intentionally skipped.
+
+**Verification notes (2026-10-26, local Docker):** scenarios were run with curl against `/sourceFiles/en/login` using a temporary STAFF test user (removed afterwards). The window expiry was simulated by moving `created` back 6 minutes in the database. The IP-wide cap was reached by inserting 49 rows with different username hashes, then posting a 50th username. "User B can log in" was checked as an unknown second username getting the normal message instead of the block message. `TRUSTED_PROXIES` was checked by calling the authenticator's IP logic directly with built requests, not through a real proxy. The transform was also run on the previous `Application.php` (upgrade path) and produced the same result as a fresh build.
+
+Not yet verified:
+- Remember-me cookie login: the source-files access gate is stored in the session, so a cookie-only request could not be isolated.
+- No method deletes rows still inside the window: checked by reading the code, not by a test.
+- Sending a real `X-Forwarded-For` through an actual proxy / CDN.
 
 ### Blocking
 
@@ -186,12 +223,15 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] 4 wrong passwords, then the correct password: login succeeds.
-- [ ] 5 wrong passwords: the next attempt shows the "Too many failed login attempts" message.
-- [ ] While blocked, the correct password is also refused.
-- [ ] While blocked, no new rows are added to `login_attempts`.
-- [ ] After the window passes (5 minutes by default), the correct password works again.
-- [ ] Username case and surrounding spaces do not matter: `User@Example.com ` and `user@example.com` share one counter.
+- [x] 4 wrong passwords, then the correct password: login succeeds.
+- [x] 5 wrong passwords: the next attempt shows the "Too many failed login attempts" message.
+- [x] A blocked attempt returns HTTP 429; a normal wrong password returns HTTP 200.
+- [x] After 50 failures from one IP with different usernames, any username from that IP is blocked, including the correct password of a real user.
+- [x] Below the IP-wide cap, a different username from the same IP gets the normal message.
+- [x] While blocked, the correct password is also refused.
+- [x] While blocked, no new rows are added to `login_attempts`.
+- [x] After the window passes (5 minutes by default), the correct password works again.
+- [x] Username case and surrounding spaces do not matter: `User@Example.com ` and `user@example.com` share one counter.
 
 ### Account Privacy
 
@@ -203,10 +243,10 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] A non-existent username is blocked after 5 failures, exactly like a real one.
-- [ ] Wrong password and unknown username show the same message.
-- [ ] The flash no longer shows `json_encode` result data.
-- [ ] `login_attempts` contains no raw usernames or passwords, only `username_hash`.
+- [x] A non-existent username is blocked after 5 failures, exactly like a real one.
+- [x] Wrong password and unknown username show the same message.
+- [x] The flash no longer shows `json_encode` result data.
+- [x] `login_attempts` contains no raw usernames or passwords, only `username_hash`.
 
 ### Shared Networks
 
@@ -217,8 +257,8 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] While user A is blocked, user B from the same IP can log in.
-- [ ] A successful login clears only that IP + username's failures.
+- [x] While user A is blocked, user B from the same IP can log in.
+- [x] A successful login clears only that IP + username's failures.
 
 ### Storage
 
@@ -230,8 +270,8 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] Clearing cookies / using a private window does not reset a block.
-- [ ] Rows older than the window are deleted when the next failure is recorded.
+- [x] Clearing cookies / using a private window does not reset a block.
+- [x] Rows older than the window are deleted when the next failure is recorded.
 - [ ] No method deletes rows that are still inside the window, except clear-on-success for the exact key.
 
 ### Real IP
@@ -244,8 +284,8 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] With `TRUSTED_PROXIES` unset, a fake `X-Forwarded-For` header does not change the recorded IP.
-- [ ] With `TRUSTED_PROXIES` set to the proxy IP, the client IP from `X-Forwarded-For` is recorded.
+- [x] With `TRUSTED_PROXIES` unset, a fake `X-Forwarded-For` header does not change the recorded IP.
+- [x] With `TRUSTED_PROXIES` set to the proxy IP, the client IP from `X-Forwarded-For` is recorded.
 
 ### Unaffected Logins
 
@@ -256,8 +296,26 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] An already logged-in session is not affected by a block on its IP.
+- [x] An already logged-in session is not affected by a block on its IP.
 - [ ] Remember-me cookie login still works.
+
+### CodeBlocks Page
+
+**Intent:** The Blocks menu has a page that explains the feature with the real settings and source files.
+
+**Surfaces:**
+- `AppController::setupMenu()`
+- `CodeBlocksController::loginThrottling()`
+- `LoginAttemptsTable::settings()`
+
+#### Scenarios
+
+- [x] The Blocks group shows a `Login Throttling` link, highlighted while on the page.
+- [x] The page renders without errors and shows the limits from `LoginAttemptsTable` (5 per IP + username, 50 per IP, 5 minutes).
+- [x] The schema, Table and authenticator are shown from their real source files.
+- [x] The "login page" link opens `/en/login`.
+- [x] The page shows no IPs or username hashes.
+- [x] A fresh build includes the menu link and the page.
 
 ### Fresh Build
 
@@ -269,6 +327,6 @@ Manual only (MVP). Automated tests intentionally skipped.
 
 #### Scenarios
 
-- [ ] A fresh build loads `ThrottledFormAuthenticator` instead of `Authentication.Form`.
-- [ ] Running the transform a second time changes nothing.
-- [ ] The old `FormLoginAttemptsAuthenticator` / `FormAttemptsTable` are no longer present in a fresh build.
+- [x] A fresh build loads `ThrottledFormAuthenticator` instead of `Authentication.Form`.
+- [x] Running the transform a second time changes nothing.
+- [x] The old `FormLoginAttemptsAuthenticator` / `FormAttemptsTable` are no longer present in a fresh build.

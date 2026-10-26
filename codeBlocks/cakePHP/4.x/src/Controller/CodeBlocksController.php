@@ -182,6 +182,28 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_renderVar', []);
     }
 
+    public function loginThrottling()
+    {
+        $this->set('codeBlocks_title', 'Login Throttling');
+        $this->set(
+            'codeBlocks_subTitle',
+            'Temporarily blocks repeated failed logins per IP + username, before the password is checked.'
+        );
+
+        $settings = $this->fetchTable('LoginAttempts')->settings();
+        $this->set('throttleMaxFailures', $settings['maxFailures']);
+        $this->set('throttleMaxFailuresPerIp', $settings['maxFailuresPerIp']);
+        $this->set('throttleWindowMinutes', $settings['windowMinutes']);
+        $this->set('throttleLoginUrl', Router::url(['prefix' => false, 'controller' => 'Users', 'action' => 'login', 'language' => 'en']));
+
+        $this->set('codeBlocks_renderFiles', [
+            'Schema' => APP . '../config/schema/2026-10-26.sql',
+            'Table' => APP . 'Model/Table/LoginAttemptsTable.php',
+            'Authenticator' => APP . 'Authenticator/ThrottledFormAuthenticator.php',
+        ]);
+        $this->set('codeBlocks_renderVar', []);
+    }
+
     public function envVars()
     {
         $this->set('codeBlocks_title', 'ENV Vars');

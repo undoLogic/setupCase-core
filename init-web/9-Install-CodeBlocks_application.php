@@ -85,10 +85,6 @@ $newMethodBlock = <<<'PHP'
             'fields' => $fields,
         ]);
         $authenticationService->loadAuthenticator('Authentication.Session');
-        $authenticationService->loadAuthenticator('Authentication.Form', [
-            'fields' => $fields,
-            'loginUrl' => $loginUrl,
-        ]);
         $authenticationService->loadAuthenticator('Authentication.Cookie', [
             'fields' => $fields,
             'loginUrl' => $loginUrl,
@@ -97,6 +93,12 @@ $newMethodBlock = <<<'PHP'
                 'expires' => strtotime('+30 days'),
                 'httponly' => true,
             ],
+        ]);
+        // Form stays last: on failure the service returns the last result, which
+        // UsersController::login() reads for the Login Throttling message
+        $authenticationService->loadAuthenticator(\App\Authenticator\ThrottledFormAuthenticator::class, [
+            'fields' => $fields,
+            'loginUrl' => $loginUrl,
         ]);
         return $authenticationService;
     }
@@ -172,6 +174,50 @@ if (strpos($contents, "return \$basePath . '/login';") !== false) {
     if ($count > 0) {
         $updated = true;
     }
+}
+
+// Login Throttling: swap Authentication.Form for ThrottledFormAuthenticator (loaded after Cookie)
+if (strpos($contents, 'ThrottledFormAuthenticator::class') === false) {
+    $oldAuthenticators = <<<'PHP'
+        $authenticationService->loadAuthenticator('Authentication.Session');
+        $authenticationService->loadAuthenticator('Authentication.Form', [
+            'fields' => $fields,
+            'loginUrl' => $loginUrl,
+        ]);
+        $authenticationService->loadAuthenticator('Authentication.Cookie', [
+            'fields' => $fields,
+            'loginUrl' => $loginUrl,
+            'cookie' => [
+                'name' => 'remember_me_cookie',
+                'expires' => strtotime('+30 days'),
+                'httponly' => true,
+            ],
+        ]);
+PHP;
+    $newAuthenticators = <<<'PHP'
+        $authenticationService->loadAuthenticator('Authentication.Session');
+        $authenticationService->loadAuthenticator('Authentication.Cookie', [
+            'fields' => $fields,
+            'loginUrl' => $loginUrl,
+            'cookie' => [
+                'name' => 'remember_me_cookie',
+                'expires' => strtotime('+30 days'),
+                'httponly' => true,
+            ],
+        ]);
+        // Form stays last: on failure the service returns the last result, which
+        // UsersController::login() reads for the Login Throttling message
+        $authenticationService->loadAuthenticator(\App\Authenticator\ThrottledFormAuthenticator::class, [
+            'fields' => $fields,
+            'loginUrl' => $loginUrl,
+        ]);
+PHP;
+    $contents = str_replace($oldAuthenticators, $newAuthenticators, $contents, $count);
+    if ($count !== 1) {
+        echo "ERROR - Authentication.Form / Cookie anchor not found for Login Throttling";
+        exit(1);
+    }
+    $updated = true;
 }
 
 if (strpos($contents, 'use Cake\\Routing\\Router;') !== false && strpos($contents, 'Router::') === false) {
