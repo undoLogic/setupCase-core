@@ -1,15 +1,15 @@
 # What is SetupCase?
 
-**SetupCase is the foundation behind how we build software at undoLogic.**
+**SetupCase is the rough starter behind how we build software at undoLogic.**
 
-Developed and refined through **years of real-world projects**, SetupCase provides a proven starting point for creating web applications without rebuilding the same foundation every time.
+Developed and refined through **years of real-world projects**, SetupCase is a **proven system that grows with your project**. It gives you a working starting point instead of rebuilding the same foundation every time. It is not a proven security solution; see the [Disclaimer](#disclaimer).
 
 ### SetupCase provides:
 
 * **A proven application foundation** — start new projects from an established architecture instead of starting from scratch.
 * **Built on CakePHP** — leveraging a mature PHP framework while adding our own conventions, structure and reusable components.
 * **Consistent development patterns** — projects follow the same architecture and conventions, making them easier to understand and maintain.
-* **Reusable functionality** — improvements developed for individual projects can be refined and pushed back into SetupCase Core.
+* **Reusable concepts** — when a project shows a need that future projects share, the concept is rebuilt in general form inside SetupCase Core.
 * **Faster project development** — spend more time building what makes a project unique instead of rebuilding common infrastructure.
 * **Long-term maintainability** — projects benefit from improvements made to the core architecture over time.
 
@@ -17,7 +17,7 @@ Developed and refined through **years of real-world projects**, SetupCase provid
 
 SetupCase follows a simple philosophy:
 
-**Start with SetupCase Core → Build the project → Improve the foundation → Push reusable improvements back to SetupCase Core → Use those improvements on future projects.**
+**Start with SetupCase Core → Build the project → Spot reusable concepts → Rebuild them generically in SetupCase Core → Use them on future projects.**
 
 This allows SetupCase to continuously evolve based on **real production software and real-world requirements**.
 
@@ -34,6 +34,8 @@ This allows SetupCase to continuously evolve based on **real production software
 Maintaining SetupCase Core itself (moving improvements from `testFlight` to `main`)? See [Maintaining SetupCase Core](#maintaining-setupcase-core-testflight---main) at the end of this file.
 
 Upgrading CakePHP or other Composer packages on a project? See [Upgrading Vendor (Composer) on a Project](#upgrading-vendor-composer-on-a-project).
+
+Moving a project to a new PHP version? See [Upgrading the PHP Version on a Project](#upgrading-the-php-version-on-a-project).
 
 ## Creating a New Project from SetupCase Core
 
@@ -100,9 +102,9 @@ Confirm that you are in the project's root directory before continuing.
 
 ## 4. Build the Docker Environment
 
-Navigate into the SetupCase Docker directory 
+Navigate into the SetupCase Docker directory
 
-Windows 
+Windows
 ```bash
 cd dockerWSL
 ```
@@ -156,7 +158,7 @@ Allow the installation process to complete.
 Confirm that:
 
 * The installation completes successfully.
-* No PHP errors are displayed. 
+* No PHP errors are displayed.
 * No CakePHP errors are displayed.
 * No database or configuration errors are reported.
 
@@ -215,7 +217,7 @@ The project is now ready for project-specific configuration and development.
 - Even when developing on Linux, the **Cloud server is the preferred environment for day-to-day development**. It avoids running unnecessary local Docker containers and makes switching between projects faster and easier.
 - Using the Cloud environment means you **do not need to close, rebuild, or restart Docker containers** every time you move between projects.
 
-> **Local Docker is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.**is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.
+> **Local Docker is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.**
 
 ---
 
@@ -242,7 +244,7 @@ Run Composer inside your development environment (the local Docker web container
 - [ ] Choose the kind of update:
 
   | Goal | Do |
-  |---|---|
+    |---|---|
   | Security / patch updates within the current versions | `composer update` |
   | One package only | `composer update vendor/package --with-dependencies` |
   | New major/minor version (e.g. CakePHP) | Edit the version in `composer.json` first, then `composer update` |
@@ -293,6 +295,48 @@ Run Composer inside your development environment (the local Docker web container
 
 - Revert the vendor commit (`git revert <commit>`), push, and deploy again. This restores the previous `vendor/` exactly.
 - Because the update has its own commit, reverting it never removes other work.
+
+---
+
+# Upgrading the PHP Version on a Project
+
+Use this checklist when moving a project to a new PHP version (for example 8.2 -> 8.3). Point releases (8.3.x) are not covered here.
+
+> On managed hosting, PHP point releases are usually applied by the host. Projects hosted with **SetupCase by undoLogic** receive them automatically. Moving to a new PHP version, and testing it, is still your responsibility.
+
+**The rule:** local Docker and production run the same PHP version. Match the version (8.3), not every point release.
+
+## 1. Before You Start
+
+- [ ] Check which PHP versions still receive security support. Do not upgrade to a version that is close to end of life.
+- [ ] Note the version production runs today.
+- [ ] Working tree is clean (`git status` shows nothing).
+
+## 2. Upgrade in Development
+
+- [ ] Pin the Docker image to the new version only (e.g. `php:8.3`), so point releases still apply automatically.
+- [ ] Set `config.platform.php` in `sourceFiles/composer.json` to the new version.
+- [ ] Rebuild Docker and start the project.
+- [ ] Run `composer update`, then follow "Upgrading Vendor (Composer) on a Project" from step 3.
+
+## 3. Test in Development
+
+- [ ] Rerun every journey for the project.
+- [ ] The site loads with no PHP / CakePHP errors or deprecation warnings.
+- [ ] `sourceFiles/logs/error.log` has no new errors.
+
+## 4. Deploy
+
+- [ ] Switch **pending** to the new PHP version in the hosting control panel and deploy.
+- [ ] Run `composer check-platform-reqs` on pending to confirm required extensions are present.
+- [ ] Rerun the journeys on pending.
+- [ ] Switch **live** to the new PHP version and deploy.
+- [ ] Check login and the main pages on live.
+
+## If Something Goes Wrong
+
+- Switch the PHP version back in the hosting control panel. This takes seconds and buys time.
+- Fix forward: correct the problem in code, test, and switch to the new version again. Do not roll the code back.
 
 ---
 
@@ -372,3 +416,9 @@ SetupCase Core grows from what real projects need. When project work shows a con
 1. Describe the concept in general terms: the problem it solves and the behaviour every project needs.
 2. Build it fresh in `sourceFiles/` on `testFlight`, with its own feature file. Use only generic names and sample data. No project-specific names, data, credentials or business rules.
 3. Let it travel to `main` through the normal cycle above (Update CodeBlocks, then import).
+
+---
+
+## Need more than a starter?
+
+For managed hosting and maintenance, contact undoLogic.
