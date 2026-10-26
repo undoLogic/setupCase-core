@@ -23,6 +23,16 @@ This allows SetupCase to continuously evolve based on **real production software
 
 > **SetupCase is opinionated.** Not all feature requests will be accepted. The project roadmap and architectural direction are maintained by **undoLogic**.
 
+## Disclaimer
+
+> **Important: SetupCase Core is rough scaffolding, not a secured product.**
+>
+> SetupCase Core is a starting point for getting a basic CakePHP application up and running quickly. It is provided as is, without warranty of any kind, and makes no promise of security or fitness for production.
+>
+> Built-in safeguards are basic only. They are not meant to replace the detailed security review, testing and hardening you should do before launching your own project publicly. That work is your responsibility.
+
+Maintaining SetupCase Core itself (moving improvements from `testFlight` to `main`)? See [Maintaining SetupCase Core](#maintaining-setupcase-core-testflight---main) at the end of this file.
+
 ## Creating a New Project from SetupCase Core
 
 SetupCase Core is used as the starting point for new SetupCase projects.
@@ -204,3 +214,82 @@ The project is now ready for project-specific configuration and development.
 - Using the Cloud environment means you **do not need to close, rebuild, or restart Docker containers** every time you move between projects.
 
 > **Local Docker is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.**is primarily used for project setup and local testing when required. For normal development, use the Cloud development environment.
+
+---
+
+# Maintaining SetupCase Core (testFlight -> main)
+
+For SetupCase Core maintainers only. This is the checklist. The full rules, reasoning and test scenarios are in `docs/features/SetupCase-Core-Platform-Build-and-CodeBlocks-Workflow.md`.
+
+## Branches
+
+| Branch | Contains `sourceFiles/`? | Role |
+|---|---|---|
+| `main` | No | The factory. GitHub template source for new projects. |
+| `testFlight` | Yes | The running proof: factory files plus a built and extended app. Never used for customer work. |
+
+- Never merge `testFlight` into `main` wholesale. `main` must never contain `sourceFiles/`.
+- On `testFlight`, keep **feature commits** (touching `sourceFiles/`) separate from **factory commits** (touching `codeBlocks/`, `init-web/`, `docs/`, scripts).
+
+## The Cycle
+
+### 1. Build on testFlight
+
+- Build and verify features directly in `sourceFiles/`.
+- Write or update the feature file in `docs/features/` (see `AGENTS.md`).
+- Commit with the `FEATURE: <feature-file>.md - <stage>` message convention. This is how the next step groups changes.
+
+### 2. Update CodeBlocks (on testFlight)
+
+Tell the AI coding tool: **`Update CodeBlocks`**.
+
+- Starting point: the latest `Source commit` in `codeBlocks/cakePHP/4.x/changeLog.md`. Everything in `git log <source-commit>..HEAD -- sourceFiles/` is reviewed.
+- The AI classifies every changed file as **sync** (copy into `codeBlocks/cakePHP/4.x/`), **transform** (an `init-web/9-*` script), **schema** (dated SQL), or **exclude** (project-specific, with the reason).
+- It updates `init-web/8-Save-CodeBlocks.php`, adds a changelog entry with the new `Source commit`, and reports what was promoted and what was excluded.
+- The AI never stages or commits. Review its changes yourself.
+
+### 3. Rebuild Check
+
+A promotion is only proven when a fresh build reproduces it. The AI copies `codeBlocks/`, `init-web/` and `AGENTS.md` into a temporary `.rebuild-check/` folder, runs `php init-web/1-Install.php` there inside the container as `www-data`, compares the result with the real `sourceFiles/`, then deletes the folder.
+
+Every promoted change must reappear. If one does not, it only ever lived in `testFlight` and would be lost. Fix CodeBlocks before going on.
+
+### 4. Commit on testFlight
+
+Stage and commit the factory changes yourself (factory commit, separate from feature commits), then push.
+
+### 5. Bring main-only edits back first
+
+If anything was edited directly on `main` (in `codeBlocks/`, `init-web/`, `docs/`, `dockerLinux/`, `AGENTS.md` or `README.md`), copy it into `testFlight` and commit it there first. The import script stops and lists these files if you forget.
+
+### 6. Import into main
+
+1. Switch to `main`.
+2. If a `sourceFiles/` folder is left behind (ignored files such as `tmp/` and `logs/`), confirm it matches `testFlight`, then delete it.
+3. Run from the repo root:
+
+   ```bash
+   ./import_from_testflight.sh
+   ```
+
+   It overwrites `codeBlocks/`, `init-web/`, `docs/`, `dockerLinux/`, `AGENTS.md` and `README.md` with the `testFlight` versions, in the working tree only. It never imports `sourceFiles/` and it stages nothing. Other root files (for example `.gitignore`) are not imported; copy those by hand if needed.
+4. Review the diff. Confirm no `sourceFiles/` is included.
+5. Stage and commit yourself.
+
+### 7. Check Before Every Push
+
+- No client names, customer data, secrets, credentials or hosting details.
+- No customer-specific journeys.
+- Re-read `AGENTS.md` changes as well.
+
+### 8. Back to testFlight
+
+Switch back to `testFlight` and continue. The next `Update CodeBlocks` starts from the newest `Source commit` in the changelog.
+
+## Adding New Concepts to SetupCase Core
+
+SetupCase Core grows from what real projects need. When project work shows a concept that future projects would also benefit from, it is rewritten into SetupCase Core as a general foundation feature. Project code is never copied in.
+
+1. Describe the concept in general terms: the problem it solves and the behaviour every project needs.
+2. Build it fresh in `sourceFiles/` on `testFlight`, with its own feature file. Use only generic names and sample data. No project-specific names, data, credentials or business rules.
+3. Let it travel to `main` through the normal cycle above (Update CodeBlocks, then import).
