@@ -1,4 +1,8 @@
-FROM undologic/setupcase-base
+# PHP 8.3 on Debian 12 (bookworm), matching pending.
+# Replaces undologic/setupcase-base (PHP 8.1); its packages are merged in below.
+# Pinned to bookworm: Debian 13 (the default 8.3 tag) dropped wkhtmltopdf
+# (used for contracts/labels PDFs) and libc-client-dev (needed for imap).
+FROM php:8.3-apache-bookworm
 
 ARG UID=1000
 ARG GID=1000
@@ -12,7 +16,37 @@ RUN groupmod -g ${GID} www-data \
 # --------------------------------------------------
 # Apache (CakePHP primary)
 # --------------------------------------------------
-RUN a2enmod rewrite ssl
+RUN a2enmod rewrite ssl headers
+
+# --------------------------------------------------
+# Packages from the former undologic/setupcase-base image
+# --------------------------------------------------
+RUN apt-get update && apt-get install -y \
+        inetutils-ping \
+        nano \
+        lpr \
+        qrencode \
+        wkhtmltopdf \
+        libzip-dev \
+        libicu-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libfreetype6-dev \
+        libxml2-dev \
+        libonig-dev \
+        libxslt1-dev \
+        openssh-server \
+        \
+        # ---- Libraries for extensions that production has ----
+        libwebp-dev \
+        libxpm-dev \
+        libavif-dev \
+        libbz2-dev \
+        libgmp-dev \
+        libldap2-dev \
+        libpspell-dev \
+        libtidy-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # --------------------------------------------------
 # System packages (shared across PHP, mobile, localApp)
@@ -47,6 +81,16 @@ RUN apt-get update && apt-get install -y \
 # PHP extensions (CakePHP)
 # --------------------------------------------------
 RUN docker-php-ext-install pdo pdo_mysql curl sockets mysqli
+
+# GD options match production's configure line; GD is used by
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-xpm --with-avif \
+ && docker-php-ext-install gd
+
+RUN docker-php-ext-install \
+        bcmath bz2 calendar exif ftp gettext gmp ldap pcntl pspell soap tidy xsl zip
+
+RUN pecl install imagick \
+ && docker-php-ext-enable imagick
 
 RUN docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
  && docker-php-ext-install imap
