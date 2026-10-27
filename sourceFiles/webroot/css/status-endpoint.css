@@ -1,0 +1,106 @@
+/* Status Endpoint monitor page. Spec: docs/features/MVP-Status-Endpoint.md */
+
+.status-endpoint {
+    margin: 0;
+    padding: 16px;
+    background: #f4f5f7;
+    color: #212529;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.status-endpoint-card {
+    max-width: 480px;
+    margin: 40px auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-endpoint-app {
+    margin: 0 0 12px;
+    color: #6c757d;
+    font-size: 14px;
+    word-break: break-all;
+}
+
+.status-endpoint-banner {
+    padding: 16px;
+    border-radius: 6px;
+    background: #6c757d;
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.status-endpoint-card[data-state="ok"] .status-endpoint-banner { background: #198754; }
+.status-endpoint-card[data-state="errors"] .status-endpoint-banner { background: #dc3545; }
+.status-endpoint-card[data-state="unreachable"] .status-endpoint-banner { background: #6c757d; }
+
+.status-endpoint-counts {
+    display: flex;
+    gap: 16px;
+    margin: 20px 0 4px;
+}
+
+.status-endpoint-counts div {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.status-endpoint-counts dt {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.status-endpoint-counts dd {
+    margin: 4px 0 0;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.status-endpoint-note {
+    margin: 0 0 16px;
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.status-endpoint-meta {
+    width: 100%;
+    margin-bottom: 16px;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.status-endpoint-meta th,
+.status-endpoint-meta td {
+    padding: 4px 0;
+    border-bottom: 1px solid #f1f1f1;
+    text-align: left;
+}
+
+.status-endpoint-meta th {
+    width: 40%;
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.status-endpoint-button {
+    width: 100%;
+    padding: 10px;
+    border: 0;
+    border-radius: 6px;
+    background: #0d6efd;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.status-endpoint-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}

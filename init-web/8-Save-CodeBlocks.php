@@ -65,6 +65,12 @@ $dirs = [
     $rootDir . '/sourceFiles/webroot/js/documentation-viewer.js' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/js/documentation-viewer.js',
     $rootDir . '/sourceFiles/webroot/modules/pdfjs-3.11.174/.' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/modules/pdfjs-3.11.174',
 
+    //Status Endpoint
+    $rootDir . '/sourceFiles/src/Controller/StatusController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/StatusController.php',
+    $rootDir . '/sourceFiles/templates/Status/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Status',
+    $rootDir . '/sourceFiles/webroot/css/status-endpoint.css' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/css/', // dir form: rsync creates css/ on first save
+    $rootDir . '/sourceFiles/webroot/js/status-endpoint.js' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/js/status-endpoint.js',
+
     //View helpers
 ];
 

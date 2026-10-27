@@ -184,6 +184,14 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
+                        'name' => 'Status Endpoint',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'statusEndpoint',
+                        ],
+                    ],
+                    [
                         'name' => 'ENV Vars',
                         'link' => [
                             'prefix' => false,
