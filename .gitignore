@@ -46,3 +46,7 @@ Thumbs.db
 
 
 /.aider*
+
+### Files S3 Offload: Docker stand-in for the hosting private path
+/dockerLinux/private/
+/dockerLinux/secrets.env

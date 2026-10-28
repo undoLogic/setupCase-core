@@ -6,6 +6,7 @@
     "license": "MIT",
     "require": {
         "php": ">=7.4",
+        "aws/aws-sdk-php": "^3.402",
         "cakephp/authentication": "^2.0",
         "cakephp/cakephp": "^4.5.0",
         "cakephp/migrations": "^3.7",
@@ -39,6 +40,7 @@
     "scripts": {
         "post-install-cmd": "App\\Console\\Installer::postInstall",
         "post-create-project-cmd": "App\\Console\\Installer::postInstall",
+        "pre-autoload-dump": "Aws\\Script\\Composer\\Composer::removeUnusedServices",
         "check": [
             "@test",
             "@cs-check"
@@ -46,6 +48,11 @@
         "cs-check": "phpcs --colors -p",
         "cs-fix": "phpcbf --colors -p",
         "test": "phpunit --colors=always"
+    },
+    "extra": {
+        "aws/aws-sdk-php": [
+            "S3"
+        ]
     },
     "minimum-stability": "dev",
     "prefer-stable": true,

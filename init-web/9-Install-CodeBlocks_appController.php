@@ -301,6 +301,14 @@ $setupMenuBlock = <<<'PHP'
                         ],
                     ],
                     [
+                        'name' => 'Files S3 Offload',
+                        'link' => [
+                            'prefix' => 'Staff',
+                            'controller' => 'Files',
+                            'action' => 'index',
+                        ],
+                    ],
+                    [
                         'name' => 'Download To CSV',
                         'link' => [
                             'prefix' => 'Staff',

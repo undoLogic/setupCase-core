@@ -1,0 +1,50 @@
+/* Files S3 Offload. Spec: docs/features/MVP-Files-S3-Offload.md */
+
+.files-s3-offload-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.files-s3-offload-tile {
+    min-width: 0;
+    text-align: center;
+}
+
+/* Fixed square box: the GIF has room and nothing jumps when the real image arrives */
+.files-s3-offload-img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: none;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #f8f9fa;
+}
+
+.files-s3-offload-img.files-s3-offload-loaded {
+    object-fit: cover;
+    background: #fff;
+}
+
+.files-s3-offload-img.files-s3-offload-failed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.files-s3-offload-name {
+    margin-top: 6px;
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.files-s3-offload-setup th {
+    width: 45%;
+    font-weight: normal;
+    color: #6c757d;
+}

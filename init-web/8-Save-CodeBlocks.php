@@ -71,6 +71,17 @@ $dirs = [
     $rootDir . '/sourceFiles/webroot/css/status-endpoint.css' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/css/', // dir form: rsync creates css/ on first save
     $rootDir . '/sourceFiles/webroot/js/status-endpoint.js' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/js/status-endpoint.js',
 
+    //Files S3 Offload
+    $rootDir . '/sourceFiles/config/schema/2026-10-27.sql' => $rootDir . '/codeBlocks/cakePHP/4.x/config/schema/2026-10-27.sql',
+    $rootDir . '/sourceFiles/src/Model/Table/FilesTable.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Table/FilesTable.php',
+    $rootDir . '/sourceFiles/src/Model/Entity/File.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Model/Entity/File.php',
+    $rootDir . '/sourceFiles/src/Controller/Staff/FilesController.php' => $rootDir . '/codeBlocks/cakePHP/4.x/src/Controller/Staff/FilesController.php',
+    $rootDir . '/sourceFiles/templates/Staff/Files/.' => $rootDir . '/codeBlocks/cakePHP/4.x/templates/Staff/Files',
+    $rootDir . '/sourceFiles/webroot/css/files-s3-offload.css' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/css/', // dir form: rsync creates css/ on first save
+    $rootDir . '/sourceFiles/webroot/js/files-s3-offload.js' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/js/files-s3-offload.js',
+    $rootDir . '/sourceFiles/webroot/img/files-s3-offload-loading.gif' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/img/', // dir form
+    $rootDir . '/sourceFiles/webroot/img/files-s3-offload/.' => $rootDir . '/codeBlocks/cakePHP/4.x/webroot/img/files-s3-offload',
+
     //View helpers
 ];
 
