@@ -298,6 +298,9 @@ The block's own page is the working feature **and** its code blocks, like the ot
 - **Guide:** an overview, the folder and bucket layout, "Build it on a project" (Composer step, SQL, files, images, cron, settings, client-project notes), the settings table, and how to run the push.
 - **Bottom:** every source file in full, through `codeBlocks_renderFiles`, so another project (or an AI assistant) can build the block from this page alone. These are the SQL, Table, Entity, Controller, template (one file), JS, CSS and `config/cron.php`.
 - Each file has a **push-s3** link to push it now (decision 15) and a **Delete** link (decision 16). The cron job itself stays unreachable from the web, and the page shows `bin/cake cron run files_push` for running it by hand.
+- **Public read-only copy (2026-10-28):** **Blocks → Files S3 Offload** (`/en/code-blocks/files-s3-offload`, `CodeBlocksController::filesS3Offload()`) shows the same guide and source files with no user login, so an AI can read it. It has no upload, list or links.
+  - The guide is one element, `templates/element/2026/codeBlocks/files_s3_offload.php`, rendered by both pages. It is CodeBlocks-only and never copied to a project.
+  - The source-file list and subtitle are `FilesController::CODE_BLOCK_FILES` / `CODE_BLOCK_SUBTITLE`, shared by both pages.
 
 ## Wiring
 

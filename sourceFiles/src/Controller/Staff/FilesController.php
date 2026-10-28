@@ -20,6 +20,20 @@ use Cake\Routing\Router;
  */
 class FilesController extends AppController
 {
+    // Shown on this page and on the public CodeBlocks page (CodeBlocksController::filesS3Offload)
+    public const CODE_BLOCK_SUBTITLE = 'Upload a file: it is saved to the private path and works at once. A cron job then pushes it to S3 (AWS or DigitalOcean Spaces). Images get a thumbnail, other files an icon.';
+
+    public const CODE_BLOCK_FILES = [
+        'SQL: config/schema/2026-10-27.sql' => CONFIG . 'schema/2026-10-27.sql',
+        'Model: src/Model/Table/FilesTable.php' => APP . 'Model/Table/FilesTable.php',
+        'Entity: src/Model/Entity/File.php' => APP . 'Model/Entity/File.php',
+        'Controller: src/Controller/Staff/FilesController.php' => APP . 'Controller/Staff/FilesController.php',
+        'Template (one file; split into elements once in a project): templates/Staff/Files/index.php' => APP . '../templates/Staff/Files/index.php',
+        'JS: webroot/js/files-s3-offload.js' => WWW_ROOT . 'js/files-s3-offload.js',
+        'CSS: webroot/css/files-s3-offload.css' => WWW_ROOT . 'css/files-s3-offload.css',
+        'Cron: config/cron.php' => CONFIG . 'cron.php',
+    ];
+
     public function beforeFilter(EventInterface $event)
     {
         $this->set('webroot', Router::url('/'));
@@ -64,18 +78,9 @@ class FilesController extends AppController
         $this->set('codeBlocks_title', 'Files S3 Offload');
         $this->set(
             'codeBlocks_subTitle',
-            'Upload a file: it is saved to the private path and works at once. A cron job then pushes it to S3 (AWS or DigitalOcean Spaces). Images get a thumbnail, other files an icon.'
+            self::CODE_BLOCK_SUBTITLE
         );
-        $this->set('codeBlocks_renderFiles', [
-            'SQL: config/schema/2026-10-27.sql' => CONFIG . 'schema/2026-10-27.sql',
-            'Model: src/Model/Table/FilesTable.php' => APP . 'Model/Table/FilesTable.php',
-            'Entity: src/Model/Entity/File.php' => APP . 'Model/Entity/File.php',
-            'Controller: src/Controller/Staff/FilesController.php' => APP . 'Controller/Staff/FilesController.php',
-            'Template (one file; split into elements once in a project): templates/Staff/Files/index.php' => APP . '../templates/Staff/Files/index.php',
-            'JS: webroot/js/files-s3-offload.js' => WWW_ROOT . 'js/files-s3-offload.js',
-            'CSS: webroot/css/files-s3-offload.css' => WWW_ROOT . 'css/files-s3-offload.css',
-            'Cron: config/cron.php' => CONFIG . 'cron.php',
-        ]);
+        $this->set('codeBlocks_renderFiles', self::CODE_BLOCK_FILES);
     }
 
     public function add()

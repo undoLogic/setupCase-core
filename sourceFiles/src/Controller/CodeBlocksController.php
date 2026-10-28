@@ -225,6 +225,18 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_renderVar', []);
     }
 
+    /**
+     * Public, read-only copy of the Files S3 Offload page (guide + source files),
+     * so an AI can read it without a login. The working page is Staff/Files/index.
+     */
+    public function filesS3Offload()
+    {
+        $this->set('codeBlocks_title', 'Files S3 Offload');
+        $this->set('codeBlocks_subTitle', \App\Controller\Staff\FilesController::CODE_BLOCK_SUBTITLE);
+        $this->set('codeBlocks_renderFiles', \App\Controller\Staff\FilesController::CODE_BLOCK_FILES);
+        $this->set('codeBlocks_renderVar', []);
+    }
+
     public function envVars()
     {
         $this->set('codeBlocks_title', 'ENV Vars');

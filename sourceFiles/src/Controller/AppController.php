@@ -182,6 +182,14 @@ class AppController extends Controller
                         ],
                     ],
                     [
+                        'name' => 'Files S3 Offload',
+                        'link' => [
+                            'prefix' => false,
+                            'controller' => 'CodeBlocks',
+                            'action' => 'filesS3Offload',
+                        ],
+                    ],
+                    [
                         'name' => 'ENV Vars',
                         'link' => [
                             'prefix' => false,
