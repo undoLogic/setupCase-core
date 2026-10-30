@@ -3,7 +3,7 @@
     "description": "CakePHP skeleton app",
     "homepage": "https://cakephp.org",
     "type": "project",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "require": {
         "php": ">=7.4",
         "aws/aws-sdk-php": "^3.402",
