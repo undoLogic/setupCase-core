@@ -431,6 +431,22 @@ SetupCase Core grows from what real projects need. When project work shows a con
 
 ---
 
+## License
+
+SetupCase by undoLogic is licensed under the [Apache License 2.0](LICENSE).
+If you build on it, keep the `LICENSE` and `NOTICE` files and the copyright
+headers in place. "SetupCase" and "undoLogic" are names of undoLogic and are
+not licensed for use in your product's branding.
+
+## Contributions
+
+SetupCase is an opinionated system and we don't accept outside pull requests.
+You're welcome to fork it and build on it under the license above.
+
+Need it built, extended, or hosted properly? That's what we do: https://undologic.com
+
+---
+
 ## Need more than a starter?
 
 For managed hosting and maintenance, contact undoLogic.

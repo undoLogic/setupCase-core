@@ -1122,3 +1122,11 @@ They live in `docs/journeys/`, one markdown file per flow. Before creating or ed
 - The redirect accepts local paths only (`/...`; no `//`, `\`, or hosts). Never relax this guard.
 - The AI user has no password and only the access its own role and group give it. It is created only by the Docker seed SQL, never on pending or live.
 - Any change to `aiAccess`, its environment check, or the AI user needs explicit human review.
+
+---
+
+# Licensing
+
+This codebase is Apache-2.0 licensed by undoLogic. When copying or adapting
+files from it, keep the copyright header and carry the LICENSE and NOTICE
+files into the destination project. Do not remove attribution.
