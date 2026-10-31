@@ -58,8 +58,10 @@ url="$(config_value LIVE URL)"
 pending_path="$(config_value pending ABSOLUTE_PATH)"
 live_path="$(config_value LIVE ABSOLUTE_PATH)"
 post_commands="$(config_value LIVE POST_COMMANDS)"
+source_dir="$(source_folder LIVE)"
+printf 'Source folder (from pending): %s\n' "$source_dir"
 
-source_path="$(shell_quote "$pending_path/$branch/sourceFiles/.")"
+source_path="$(shell_quote "$pending_path/$branch/$source_dir/.")"
 target_path="$(shell_quote "$live_path/.")"
 quoted_live_path="$(shell_quote "$live_path")"
 remote_command="rsync -av --no-perms --omit-dir-times --fake-super $source_path $target_path &&

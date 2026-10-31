@@ -23,6 +23,8 @@ git_address="$(config_value "$environment" GIT_ADDRESS)"
 remote_path="$(config_value "$environment" ABSOLUTE_PATH)"
 post_commands="$(config_value "$environment" POST_COMMANDS)"
 use_pat="$(config_value "$environment" USE_PAT)"
+source_dir="$(source_folder "$environment")"
+printf 'Source folder: %s\n' "$source_dir"
 
 quoted_path="$(shell_quote "$remote_path")"
 quoted_branch="$(shell_quote "$branch")"
@@ -47,7 +49,7 @@ remote_command="cd $quoted_path &&
 rm -rf -- * &&
 rm -rf -- $quoted_branch &&
 git clone $quoted_clone_url --branch $quoted_branch --single-branch $clone_path &&
-rsync -a --info=progress2,stats --no-perms --omit-dir-times --fake-super $clone_path/sourceFiles/ . &&
+rsync -a --info=progress2,stats --no-perms --omit-dir-times --fake-super $clone_path/$(shell_quote "$source_dir")/ . &&
 $post_commands"
 
 printf '\n--- Environment: %s ---\n\n' "$environment"

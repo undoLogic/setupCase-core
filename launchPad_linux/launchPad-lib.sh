@@ -44,6 +44,43 @@ config_value() {
     ' "$CONFIG_FILE"
 }
 
+# The repository folder an environment deploys, e.g. sourceFiles or sourceFilesNew.
+# Optional per environment: "SOURCE_FOLDER" in config.json, default "sourceFiles".
+# LIVE has no folder of its own: go-LIVE copies what pending deployed, so LIVE uses pending's.
+# Checked before anything runs on the server, because prepare.sh empties the remote folder first.
+source_folder() {
+    local environment="$1"
+    local folder
+    local live_folder
+
+    if [[ "$environment" == "LIVE" ]]; then
+        live_folder="$(jq --raw-output '.environments.LIVE.SOURCE_FOLDER // ""' "$CONFIG_FILE")"
+        environment="pending"
+    fi
+
+    folder="$(jq --raw-output --arg environment "$environment" \
+        '.environments[$environment].SOURCE_FOLDER // "sourceFiles"' "$CONFIG_FILE")"
+
+    if [[ ! "$folder" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*$ ]]; then
+        printf 'ERROR: %s.SOURCE_FOLDER must be one folder name (letters, digits, . _ -): %s\n' \
+            "$environment" "$folder" >&2
+        exit 1
+    fi
+
+    if [[ -n "${live_folder:-}" && "$live_folder" != "$folder" ]]; then
+        printf 'ERROR: LIVE.SOURCE_FOLDER (%s) differs from pending (%s). LIVE always deploys what pending has; remove it or make them match.\n' \
+            "$live_folder" "$folder" >&2
+        exit 1
+    fi
+
+    if [[ -z "$(git -C "$SCRIPT_DIR/.." ls-tree -d HEAD -- "$folder")" ]]; then
+        printf 'ERROR: %s.SOURCE_FOLDER "%s" is not a folder in the current commit.\n' "$environment" "$folder" >&2
+        exit 1
+    fi
+
+    printf '%s' "$folder"
+}
+
 ci_value() {
     local key="$1"
 

@@ -27,6 +27,26 @@ You can also select an environment directly:
 ./launchPad_linux/prepare.sh pending
 ```
 
+## Source folder
+
+Each environment deploys one folder of the repository: its contents are copied
+to the environment's `ABSOLUTE_PATH`. Pick the folder with `SOURCE_FOLDER`:
+
+```json
+"dev": {
+    "SOURCE_FOLDER": "sourceFilesNew"
+}
+```
+
+- Optional. Without it, the folder is `sourceFiles` (older configs keep working).
+- One folder name only (letters, digits, `.`, `_`, `-`), and it must exist in
+  the current commit. Both are checked before anything runs on the server,
+  because `prepare.sh` empties the remote folder first.
+- LIVE has no folder of its own: `3-go-LIVE.sh` copies what pending deployed,
+  so it uses pending's `SOURCE_FOLDER`. A different `SOURCE_FOLDER` on LIVE is
+  refused.
+- `8-phpstorm-init.sh` maps each server to its environment's folder.
+
 ## Create PhpStorm deployment servers
 
 Generate the project deployment configuration from `config.json`:

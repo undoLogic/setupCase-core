@@ -6,6 +6,7 @@
       "GIT_ADDRESS": "",
       "USE_PAT": true,
       "ABSOLUTE_PATH": "",
+      "SOURCE_FOLDER": "sourceFiles",
       "COPY_SRC_TO_ROOT": true,
       "POST_COMMANDS": "composer install"
     },
@@ -15,6 +16,7 @@
       "GIT_ADDRESS": "",
       "USE_PAT": true,
       "ABSOLUTE_PATH": "",
+      "SOURCE_FOLDER": "sourceFiles",
       "COPY_SRC_TO_ROOT": true,
       "POST_COMMANDS": "ls"
     },
@@ -24,6 +26,7 @@
       "GIT_ADDRESS": "git@setupCaseCore.github.com:undoLogic/setupCase-core.git",
       "USE_PAT": false,
       "ABSOLUTE_PATH": "/home/appsites/addons/setupcase.com/testflight",
+      "SOURCE_FOLDER": "sourceFiles",
       "COPY_SRC_TO_ROOT": true,
       "POST_COMMANDS": "composer install"
     },

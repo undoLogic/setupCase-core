@@ -108,6 +108,7 @@ while IFS= read -r environment; do
     fi
 
     server_name="${environment^^}"
+    local_folder="$(source_folder "$environment")"
     root_folder="${absolute_path%%/www/*}"
     deploy_path="/www/${absolute_path#*/www/}"
 
@@ -129,7 +130,7 @@ EOF
       <paths name="$escaped_name">
         <serverdata>
           <mappings>
-            <mapping deploy="$escaped_deploy" local="\$PROJECT_DIR\$/sourceFiles" web="/" />
+            <mapping deploy="$escaped_deploy" local="\$PROJECT_DIR\$/$local_folder" web="/" />
           </mappings>
         </serverdata>
       </paths>
@@ -137,7 +138,7 @@ EOF
 )"
     deployments+=$'\n'
 
-    printf 'Prepared %s (%s@%s)\n' "$server_name" "$user" "$host"
+    printf 'Prepared %s (%s@%s, local %s)\n' "$server_name" "$user" "$host" "$local_folder"
     ((environment_count += 1))
 done < <(jq --raw-output '.environments | keys_unsorted[]' "$CONFIG_FILE")
 
