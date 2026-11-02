@@ -1125,6 +1125,20 @@ They live in `docs/journeys/`, one markdown file per flow. Before creating or ed
 
 ---
 
+# Local Docker Network Troubleshooting
+
+If a user reports slow uploads (downloads fine), sites timing out, or internet
+dropouts on a machine running these Docker projects, suspect a Docker network
+holding the router's address (often after moving between home and office). Follow
+**"Runbook for AI assistants"** in `dockerLinux/README.md` → Troubleshooting before
+changing anything.
+
+- Never use `docker compose down -v`, `docker volume prune`, or `--volumes` prunes to fix network problems. They delete project databases.
+- Ask before restarting Docker or recreating a running project.
+- Keep `docker_pick_subnet` in `dockerLinux/docker-common.sh` and the `networks:` block in `dockerLinux/docker-compose.yml` when editing those files.
+
+---
+
 # Licensing
 
 This codebase is Apache-2.0 licensed by undoLogic. When copying or adapting

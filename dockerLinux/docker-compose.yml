@@ -49,3 +49,12 @@ services:
 
 volumes:
   db_data:
+
+# PROJECT_SUBNET is picked per project by docker-common.sh (172.16.x.0/24), so Docker never
+# picks 192.168.x and clashes with a home/office router. The fallback is used when
+# compose is run directly without the scripts.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${PROJECT_SUBNET:-172.16.250.0/24}

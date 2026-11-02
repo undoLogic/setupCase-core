@@ -55,7 +55,44 @@ docker_project_init()
         return 1
     fi
 
-    echo "Docker project: $PROJECT_NAME"
+    docker_pick_subnet || return 1
+
+    echo "Docker project: $PROJECT_NAME (network $PROJECT_SUBNET)"
+}
+
+# Picks this project's network subnet (exported as PROJECT_SUBNET, used by docker-compose.yml).
+# Without this, Docker can run out of its 172.x ranges and fall back to 192.168.0.0/20, which
+# takes a home/office router's address (192.168.0.1) and breaks uploads on that network.
+# Uses 172.16.x.0/24: Docker never auto-assigns 172.16.x, and home/office routers rarely use it.
+# Keeps the project's current subnet if it already has one there; otherwise starts at a slot
+# derived from PROJECT_NAME and skips any slot used by another Docker network or a local route.
+docker_pick_subnet()
+{
+    local current used routes start i candidate
+
+    current="$(docker network inspect "${PROJECT_NAME}_default" \
+        --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}' 2>/dev/null)"
+    if [[ "$current" == 172.16.*.0/24 ]]; then
+        export PROJECT_SUBNET="$current"
+        return 0
+    fi
+
+    used=" $(docker network inspect $(docker network ls -q) \
+        --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}' 2>/dev/null | tr '\n' ' ') "
+    start=$(( $(printf '%s' "$PROJECT_NAME" | cksum | cut -d' ' -f1) % 256 ))
+
+    for ((i = 0; i < 256; i++)); do
+        candidate="172.16.$(( (start + i) % 256 )).0/24"
+        case "$used" in *" $candidate "*) continue ;; esac
+        # Skip it if the current Wi-Fi/LAN/VPN already routes this range (ignoring the default route)
+        routes="$(ip -4 route show match "$candidate" 2>/dev/null | grep -v '^default')"
+        [ -n "$routes" ] && continue
+        export PROJECT_SUBNET="$candidate"
+        return 0
+    done
+
+    echo "No free 172.16.x.0/24 subnet left for Docker - remove unused networks with: docker network prune" >&2
+    return 1
 }
 
 # All projects use ports 80/443/8081, so only one can run at a time.
