@@ -1107,6 +1107,12 @@ Only reorganize what the author wrote. Never invent a title, description, severi
 
 ---
 
+## Software Timeline
+
+Per-quarter software history lives in `docs/timeline/`. Before creating or editing a timeline, read `docs/timeline/README.md` for the format and rules.
+
+---
+
 ## Journeys
 
 Journeys are step-by-step user flows (e.g. submitting a quote) that generate screenshots and a client-facing PDF.
