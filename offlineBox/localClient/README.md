@@ -116,16 +116,31 @@ Copy `config.example.json` to `config.json`:
 | `DryRun` | Global | Yes | `true` logs deletions without deleting. Write it without quotes. |
 | `LogFile` | Global | Yes | Absolute path to the plain text log |
 | `Name` | Set | Yes | Label used in the log |
-| `S3Endpoint`, `S3Region`, `S3Bucket` | Set | Yes | Storage location |
+| `S3Endpoint` | Set | Yes | The region's address, which must NOT contain the bucket name |
+| `S3Region`, `S3Bucket` | Set | Yes | Storage location |
 | `S3Prefix` | Set | Yes | Remote folder. OfflineBox uses `backups/`. An empty string means the bucket root. |
 | `S3AccessKey`, `S3SecretKey` | Set | Yes | Read-only credentials |
 | `LocalDir` | Set | Yes | Absolute path where this set's backups are kept. One folder per set. |
+
+**`S3Endpoint` must NOT contain the bucket name.** DigitalOcean's bucket page shows an address that includes it, so remove that part and put the bucket name in `S3Bucket`:
+
+```text
+Wrong: https://my-bucket.tor1.digitaloceanspaces.com
+Right: https://tor1.digitaloceanspaces.com
+```
 
 Keys are stored as plain text. Keep the machine's disk encrypted and its user account locked down.
 
 ## Setup
 
-1. Install the AWS CLI and confirm `aws --version` works in PowerShell.
+1. Install the AWS CLI:
+
+   ```powershell
+   winget install -e --id Amazon.AWSCLI
+   ```
+
+   Then open a new PowerShell window, so it can find the command, and run `aws --version` to confirm it works.
+
 2. Create a read-only key for each bucket with your storage provider.
 3. Open [`install.ps1` on GitHub](https://github.com/undoLogic/setupCase-core/blob/main/offlineBox/localClient/install.ps1) and click **Download raw file**. Move it into the folder the client will live in, e.g. `D:\OfflineBox\localClient\`, because it downloads into its own folder. Then run it:
 
@@ -133,7 +148,7 @@ Keys are stored as plain text. Keep the machine's disk encrypted and its user ac
    powershell -ExecutionPolicy Bypass -File D:\OfflineBox\localClient\install.ps1
    ```
 
-4. Fill in each backup set in the new `config.json`.
+4. Fill in each backup set in the new `config.json`. `S3Endpoint` must NOT contain the bucket name (see Config).
 5. Run once by hand and check the log:
 
    ```powershell
