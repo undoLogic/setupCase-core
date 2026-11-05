@@ -26,7 +26,7 @@ class OfflineBoxCommand extends Command
 {
     // Public so the admin validation page shows the same list that gets backed up.
     public const CONNECTIONS = [
-        'default' => ['include' => '*', 'exclude' => ''],
+        'default' => ['exclude' => ''],
     ];
 
     public static function s3Config(): array
@@ -97,6 +97,11 @@ class OfflineBoxCommand extends Command
             $upload = $client->upload($dump['file'], $key);
             if ($upload['STATUS'] !== 200) {
                 throw new \RuntimeException($upload['MSG']);
+            }
+
+            $recent = $client->copyToRecent($dump['file'], $key, $name);
+            if ($recent['STATUS'] !== 200) {
+                throw new \RuntimeException($recent['MSG']);
             }
 
             return 'OK';

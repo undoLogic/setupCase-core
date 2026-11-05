@@ -11,7 +11,7 @@
     <div class="card-header">
         <h2 class="h5 mb-0"><?= h($title); ?></h2>
     </div>
-    <div class="table-responsive">
+    <div>
         <table class="table table-sm align-middle mb-0">
             <tbody>
                 <?php foreach ($rows as $row): ?>

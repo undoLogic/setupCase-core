@@ -4,6 +4,7 @@
  *
  * @var \App\View\AppView $this
  * @var array $check
+ * @var array $install
  * @var array $levels
  */
 $elements = '2026/admin/offlineBox/index_';
@@ -22,6 +23,9 @@ $elements = '2026/admin/offlineBox/index_';
         </div>
         <div class="col-12 col-lg-6">
             <?= $this->element($elements . 'rows', ['title' => 'Storage', 'rows' => $check['storage']]); ?>
+        </div>
+        <div class="col-12">
+            <?= $this->element($elements . 'install'); ?>
         </div>
     </div>
 </div>

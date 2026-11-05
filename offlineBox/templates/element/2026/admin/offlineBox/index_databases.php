@@ -10,7 +10,7 @@
     <div class="card-header">
         <h2 class="h5 mb-0">Databases: what will be exported</h2>
     </div>
-    <div class="table-responsive">
+    <div>
         <table class="table table-sm align-middle mb-0">
             <thead>
                 <tr>
@@ -33,7 +33,7 @@
                             </span>
                         </td>
                         <td><?= h($database['connection']); ?></td>
-                        <td><?= h($database['database']); ?></td>
+                        <td class="text-break"><?= h($database['database']); ?></td>
                         <td>
                             <span class="badge <?= $database['willExport'] ? 'bg-primary' : 'bg-secondary'; ?>">
                                 <?= $database['willExport'] ? 'Yes' : 'No'; ?>
@@ -52,13 +52,17 @@
                                 <?php endforeach; ?>
                                 <?php if (!empty($database['tables'])): ?>
                                     <details>
-                                        <summary class="small">Show <?= h(count($database['tables'])); ?> tables</summary>
+                                        <summary class="small">Show <?= h(count($database['tables'])); ?> tables, largest first</summary>
+                                        <p class="small text-muted mt-2 mb-1">
+                                            To leave a table's data out of the backup, add it to <code>exclude</code> in <code>OfflineBoxCommand::CONNECTIONS</code>.
+                                        </p>
                                         <ul class="list-unstyled small mb-0 mt-2">
                                             <?php foreach ($database['tables'] as $table): ?>
                                                 <li>
                                                     <span class="badge <?= $table['export'] === 'Structure only' ? 'bg-secondary' : 'bg-primary'; ?>">
                                                         <?= h($table['export']); ?>
                                                     </span>
+                                                    <span class="text-muted"><?= h($table['size']); ?></span>
                                                     <?= h($table['name']); ?>
                                                 </li>
                                             <?php endforeach; ?>

@@ -13,6 +13,7 @@
 
 namespace App\Util;
 
+use Aws\S3\ObjectCopier;
 use Aws\S3\ObjectUploader;
 use Aws\S3\S3Client;
 use Cake\Datasource\ConnectionManager;
@@ -30,11 +31,21 @@ class OfflineBox
 {
     /** Where backups live in the bucket. The local client reads the same prefix. */
     public const KEY_PREFIX = 'backups/';
+    // One file per connection, always the latest. It is overwritten, never deleted.
+    public const RECENT_PREFIX = 'backups_recent/';
 
     /** A newest backup older than this shows as a problem in validate(). */
     private const MAX_BACKUP_AGE_DAYS = 2;
 
-    private const MIN_PHP_VERSION = '8.2.0';
+    // What this class needs. Composer's platform check covers the AWS SDK's own minimum.
+    private const MIN_PHP_VERSION = '8.0.0';
+    // The php.ini or environment name behind each config key, shown on the admin page.
+    private const SETTING_NAMES = [
+        'spaceKey' => 'OFFLINEBOX_S3_KEY',
+        'spaceSecret' => 'OFFLINEBOX_S3_SECRET',
+        'spaceRegion' => 'OFFLINEBOX_S3_REGION',
+        'spaceName' => 'OFFLINEBOX_S3_BUCKET',
+    ];
 
     private const DUMP_FLAGS = '--single-transaction --no-tablespaces --default-character-set=utf8mb4';
 
@@ -73,7 +84,7 @@ class OfflineBox
      *
      * @param string $connectionName CakePHP connection name (e.g. 'default').
      * @param string $filenamePrefix Optional prefix for the dump filename.
-     * @param array $tableConfig ['include' => '*'|string|array, 'exclude' => string|array].
+     * @param array $tableConfig ['exclude' => string|array]. Every table is always in the dump.
      *   'exclude' drops DATA only - the table's structure is still dumped (empty),
      *   so software relying on the table existing still works against the restored backup.
      */
@@ -114,13 +125,6 @@ class OfflineBox
 
         $this->dumpTablesFull = $tables['full'];
         $this->dumpTablesStructureOnly = $tables['structure'];
-
-        if ($this->dumpTablesFull !== null && empty($this->dumpTablesFull) && empty($this->dumpTablesStructureOnly)) {
-            return [
-                'STATUS' => 500,
-                'MSG' => 'mysqlDump aborted: include/exclude configuration resolved to zero tables for ' . $connectionName,
-            ];
-        }
 
         $this->mysqlDump_resolveDatabaseHeader($connection);
         $this->mysqlDump_writeCredentialsFile();
@@ -217,9 +221,8 @@ class OfflineBox
      * header directly (not via `mysqldump --databases`, which is NOT
      * combinable with an explicit table list - it would reinterpret our
      * table names as extra database names), then chains mysqldump pass(es)
-     * appending to the same file: a full pass for dumpTablesFull
-     * (structure + data), then a --no-data pass for dumpTablesStructureOnly,
-     * so excluded tables land in the file as empty tables rather than being
+     * appending to the same file: a --no-data pass for dumpTablesStructureOnly,
+     * then a full pass for dumpTablesFull (structure + data), so excluded tables land in the file as empty tables rather than being
      * left out entirely. The result restores cleanly with `mysql < dump.sql`
      * against an empty server.
      */
@@ -232,12 +235,14 @@ class OfflineBox
         $this->dumpFile = $this->mysqlDump_createPrivateFile(TMP . $name, $this->dumpDatabaseHeader);
         $this->dumpErrorFile = $this->mysqlDump_createPrivateFile(TMP . $name . '.err', '');
 
+        // Structure-only tables go first: a view in the full pass may read from one,
+        // and the restore stops if that table doesn't exist yet.
         $passes = [];
-        if ($this->dumpTablesFull === null || !empty($this->dumpTablesFull)) {
-            $passes[] = $this->mysqlDump_buildPass('', $this->dumpTablesFull ?? []);
-        }
         if (!empty($this->dumpTablesStructureOnly)) {
             $passes[] = $this->mysqlDump_buildPass('--no-data', $this->dumpTablesStructureOnly);
+        }
+        if ($this->dumpTablesFull === null || !empty($this->dumpTablesFull)) {
+            $passes[] = $this->mysqlDump_buildPass('', $this->dumpTablesFull ?? []);
         }
 
         // Routines belong to the database, not a table: dump them once.
@@ -350,6 +355,36 @@ class OfflineBox
     }
 
     /**
+     * Copies a verified backup to backups_recent/<connection>.sql, overwriting the last copy.
+     * The dated backup stays where it is. This never deletes anything.
+     */
+    public function copyToRecent($filename, $sourceKey, $connectionName)
+    {
+        self::requireCli('copyToRecent');
+        $recentKey = self::RECENT_PREFIX . $connectionName . '.sql';
+
+        try {
+            $copier = new ObjectCopier(
+                $this->s3,
+                ['Bucket' => $this->spaceName, 'Key' => $sourceKey],
+                ['Bucket' => $this->spaceName, 'Key' => $recentKey],
+                'private'
+            );
+            $copier->copy();
+            $res = $this->upload_verify($filename, $recentKey);
+        } catch (\Throwable $e) {
+            $res = ['STATUS' => 500, 'MSG' => 'Copy failed: ' . $e->getMessage()];
+        }
+
+        if ($res['STATUS'] !== 200) {
+            $res['MSG'] = $recentKey . ' was not updated, but ' . $sourceKey . ' is safe. ' . $res['MSG'];
+            Log::error('[OfflineBox] ' . $res['MSG']);
+        }
+
+        return $res;
+    }
+
+    /**
      * Confirms the uploaded object matches the local file (size, and
      * MD5/ETag for non-multipart uploads) rather than assuming a
      * successful upload means the backup is intact.
@@ -410,6 +445,35 @@ class OfflineBox
             'databases' => $databases,
             'environment' => $environment,
             'storage' => $storage,
+        ];
+    }
+
+    /**
+     * The cron setup steps for the admin page, using this server's app folder.
+     * Text only: it runs nothing.
+     */
+    public static function installSteps(): array
+    {
+        $cd = 'cd ' . ROOT . ' && ';
+        $settings = implode("\n", array_map(fn($name) => $name . ' = ""', self::SETTING_NAMES));
+
+        return [
+            'STATUS' => 200,
+            'MSG' => 'Install steps',
+            'intro' => 'Follow these on the server you are installing on. The folder below comes from the server showing this page, so local Docker shows its own folder.',
+            'steps' => [
+                ['text' => 'Add these to php.ini and fill in the real values. Run php --ini to find the file command-line PHP reads, and add them to the web server\'s php.ini too, then restart the web server. Never commit real values.', 'command' => $settings],
+                ['text' => 'Log in to the server as the user that will run cron, then run the check. It must say Ready and name the real database, not a dev one.', 'command' => $cd . 'bin/cake offline_box --check'],
+                ['text' => 'Run one backup by hand. It should finish with OK, and the file then shows as Newest backup on this page.', 'command' => $cd . 'bin/cake offline_box'],
+                ['text' => 'Open that user\'s cron jobs with crontab -e and add this line. It runs every night at 3:00 AM, server time.', 'command' => '0 3 * * * ' . $cd . 'bin/cake offline_box >> logs/offlinebox.log 2>&1'],
+                ['text' => 'Come back to this page the next day and confirm Newest backup has a new date. It turns red if the newest backup is ' . self::MAX_BACKUP_AGE_DAYS . ' or more days old.', 'command' => ''],
+            ],
+            'notes' => [
+                'For DigitalOcean Spaces, leave OFFLINEBOX_S3_ENDPOINT out. For AWS, also add OFFLINEBOX_S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com" with your region.',
+                'If the log says php or mysqldump is not found, cron can\'t see them. Run command -v php mysqldump, and add those folders on a PATH= line above the job.',
+                'Failed backups are also written to logs/cli-error.log.',
+                'Only use the server\'s crontab. Don\'t add this to config/cron.php or call it from a web page: backups refuse to run outside the command line.',
+            ],
         ];
     }
 
@@ -474,7 +538,7 @@ class OfflineBox
         $info = $connection->execute(
             'SELECT TABLE_NAME AS name, TABLE_TYPE AS type, ENGINE AS engine,
                 COALESCE(DATA_LENGTH, 0) + COALESCE(INDEX_LENGTH, 0) AS bytes
-             FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME',
+             FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY bytes DESC, TABLE_NAME',
             [$row['database']]
         )->fetchAll('assoc');
 
@@ -487,7 +551,11 @@ class OfflineBox
                 continue;
             }
 
-            $row['tables'][] = ['name' => $table['name'], 'export' => $hasData ? 'Data + structure' : 'Structure only'];
+            $row['tables'][] = [
+                'name' => $table['name'],
+                'export' => $hasData ? 'Data + structure' : 'Structure only',
+                'size' => self::formatBytes((int)$table['bytes']),
+            ];
             $row[$hasData ? 'tablesWithData' : 'tablesStructureOnly']++;
             $row['estimatedBytes'] += $hasData ? (int)$table['bytes'] : 0;
 
@@ -511,13 +579,9 @@ class OfflineBox
             $row['level'] = 'problem';
             $row['messages'][] = 'exclude names no such table: ' . implode(', ', $rules['missing']);
         }
-        if (!empty($rules['notFound'])) {
-            $row['level'] = 'problem';
-            $row['messages'][] = 'include names no such table: ' . implode(', ', $rules['notFound']);
-        }
         if (empty($row['tables'])) {
             $row['level'] = 'problem';
-            $row['messages'][] = 'The table rules resolve to no tables.';
+            $row['messages'][] = 'The database has no tables.';
         }
 
         return $row;
@@ -530,7 +594,7 @@ class OfflineBox
         $estimated = array_sum(array_column($databases, 'estimatedBytes'));
 
         $rows = [
-            self::row($sapi . ' PHP', PHP_VERSION, $phpOk ? 'ok' : 'problem', $phpOk ? '' : 'PHP 8.2 or later is required.'),
+            self::row($sapi . ' PHP', PHP_VERSION, $phpOk ? 'ok' : 'problem', $phpOk ? '' : 'PHP ' . self::MIN_PHP_VERSION . ' or later is required.'),
             self::validate_environmentExec(),
             self::validate_environmentMysqldump($databases),
             self::validate_environmentTmp($estimated),
@@ -600,8 +664,9 @@ class OfflineBox
         foreach (self::requiredS3Keys() as $key) {
             $isSet = !empty($config[$key]);
             $missing = $missing || !$isSet;
-            $rows[] = self::row($key, $isSet ? 'Set' : 'Missing', $isSet ? 'ok' : 'problem');
+            $rows[] = self::row(self::SETTING_NAMES[$key], $isSet ? 'Set' : 'Missing', $isSet ? 'ok' : 'problem');
         }
+        $rows[] = self::row('OFFLINEBOX_S3_ENDPOINT', $config['spaceEndpoint'] ?? '' ?: 'Optional: not set', 'ok');
 
         if ($missing || !class_exists(S3Client::class)) {
             $rows[] = self::row('Bucket', 'Not checked', 'warning', 'Needs the settings above and the AWS SDK.');
@@ -609,7 +674,7 @@ class OfflineBox
             return $rows;
         }
 
-        $rows[] = self::row('Endpoint', self::s3Endpoint($config), 'ok');
+        $rows[] = self::row('Endpoint in use', self::s3Endpoint($config), 'ok');
 
         try {
             $client = self::s3Client($config);
@@ -650,31 +715,26 @@ class OfflineBox
     }
 
     /**
-     * Resolves include/exclude config into:
+     * Resolves the exclude list into:
      * - full: structure + data (null means "whole database", no filtering).
      * - structure: excluded tables that stay in the dump as empty, structure-only tables.
-     * - missing: exclude names matching no table. The dump refuses these, because
-     *   a typo would otherwise back up the data it was meant to leave out.
-     * - notFound: include names matching no table. mysqldump itself fails on these.
+     * - missing: exclude names matching no table, views included. The dump refuses these,
+     *   because a typo would otherwise back up the data it was meant to leave out.
      */
     private static function resolveTables($connection, array $tableConfig): array
     {
-        $include = $tableConfig['include'] ?? '*';
         $exclude = self::parseTableList($tableConfig['exclude'] ?? '');
-        $isWildcard = is_string($include) && trim($include) === '*';
 
-        if ($isWildcard && empty($exclude)) {
-            return ['full' => null, 'structure' => [], 'missing' => [], 'notFound' => []];
+        if (empty($exclude)) {
+            return ['full' => null, 'structure' => [], 'missing' => []];
         }
 
-        $actual = self::listTables($connection);
-        $included = $isWildcard ? $actual : self::parseTableList($include);
+        $tables = self::listTables($connection, 'SHOW FULL TABLES WHERE Table_type = \'BASE TABLE\'');
 
         return [
-            'full' => array_values(array_diff($included, $exclude)),
-            'structure' => array_values(array_intersect($included, $exclude)),
-            'missing' => array_values(array_diff($exclude, $actual)),
-            'notFound' => array_values(array_diff($included, $actual)),
+            'full' => array_values(array_diff(self::listTables($connection, 'SHOW TABLES'), $exclude)),
+            'structure' => array_values(array_intersect($tables, $exclude)),
+            'missing' => array_values(array_diff($exclude, $tables)),
         ];
     }
 
@@ -698,10 +758,10 @@ class OfflineBox
         return array_values($tables);
     }
 
-    private static function listTables($connection): array
+    private static function listTables($connection, string $sql): array
     {
         $tables = [];
-        foreach ($connection->execute('SHOW TABLES')->fetchAll() as $row) {
+        foreach ($connection->execute($sql)->fetchAll() as $row) {
             $tables[] = (string)reset($row);
         }
 

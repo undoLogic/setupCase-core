@@ -27,6 +27,7 @@ class OfflineBoxController extends AppController
         $this->request->allowMethod(['get']);
 
         $this->set('check', OfflineBox::validate(OfflineBoxCommand::CONNECTIONS, OfflineBoxCommand::s3Config()));
+        $this->set('install', OfflineBox::installSteps());
         $this->set('levels', [
             'ok' => ['label' => 'OK', 'class' => 'bg-success'],
             'warning' => ['label' => 'Warning', 'class' => 'bg-warning text-dark'],
