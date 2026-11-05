@@ -65,13 +65,14 @@ class OfflineBox
 
     /**
      * @param array $config Required: spaceKey, spaceSecret, spaceRegion, spaceName.
-     *   Optional: spaceEndpoint (defaults to DigitalOcean Spaces for the region).
+     *   Optional: spaceEndpoint (defaults to DigitalOcean Spaces for the region), and
+     *   settingPrefix, which is only used to name settings in messages.
      */
     public function __construct(array $config)
     {
         foreach (self::requiredS3Keys() as $key) {
             if (empty($config[$key])) {
-                throw new \InvalidArgumentException("OfflineBox config missing required key: {$key}");
+                throw new \InvalidArgumentException('OfflineBox setting is missing: ' . ($config['settingPrefix'] ?? '') . self::SETTING_NAMES[$key]);
             }
         }
 
@@ -452,10 +453,10 @@ class OfflineBox
      * The cron setup steps for the admin page, using this server's app folder.
      * Text only: it runs nothing.
      */
-    public static function installSteps(): array
+    public static function installSteps(string $settingPrefix = ''): array
     {
         $cd = 'cd ' . ROOT . ' && ';
-        $settings = implode("\n", array_map(fn($name) => $name . ' = ""', self::SETTING_NAMES));
+        $settings = implode("\n", array_map(fn($name) => $settingPrefix . $name . ' = ""', self::SETTING_NAMES));
 
         return [
             'STATUS' => 200,
@@ -469,7 +470,8 @@ class OfflineBox
                 ['text' => 'Come back to this page the next day and confirm Newest backup has a new date. It turns red if the newest backup is ' . self::MAX_BACKUP_AGE_DAYS . ' or more days old.', 'command' => ''],
             ],
             'notes' => [
-                'For DigitalOcean Spaces, leave OFFLINEBOX_S3_ENDPOINT out. For AWS, also add OFFLINEBOX_S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com" with your region.',
+                'For DigitalOcean Spaces, leave ' . $settingPrefix . 'OFFLINEBOX_S3_ENDPOINT out. For AWS, also add ' . $settingPrefix . 'OFFLINEBOX_S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com" with your region.',
+                'If another project shares this php.ini, set SETTING_PREFIX in src/Command/OfflineBoxCommand.php so each project has its own settings and bucket.',
                 'If the log says php or mysqldump is not found, cron can\'t see them. Run command -v php mysqldump, and add those folders on a PATH= line above the job.',
                 'Failed backups are also written to logs/cli-error.log.',
                 'Only use the server\'s crontab. Don\'t add this to config/cron.php or call it from a web page: backups refuse to run outside the command line.',
@@ -660,13 +662,14 @@ class OfflineBox
     {
         $rows = [];
         $missing = false;
+        $prefix = $config['settingPrefix'] ?? '';
 
         foreach (self::requiredS3Keys() as $key) {
             $isSet = !empty($config[$key]);
             $missing = $missing || !$isSet;
-            $rows[] = self::row(self::SETTING_NAMES[$key], $isSet ? 'Set' : 'Missing', $isSet ? 'ok' : 'problem');
+            $rows[] = self::row($prefix . self::SETTING_NAMES[$key], $isSet ? 'Set' : 'Missing', $isSet ? 'ok' : 'problem');
         }
-        $rows[] = self::row('OFFLINEBOX_S3_ENDPOINT', $config['spaceEndpoint'] ?? '' ?: 'Optional: not set', 'ok');
+        $rows[] = self::row($prefix . 'OFFLINEBOX_S3_ENDPOINT', $config['spaceEndpoint'] ?? '' ?: 'Optional: not set', 'ok');
 
         if ($missing || !class_exists(S3Client::class)) {
             $rows[] = self::row('Bucket', 'Not checked', 'warning', 'Needs the settings above and the AWS SDK.');

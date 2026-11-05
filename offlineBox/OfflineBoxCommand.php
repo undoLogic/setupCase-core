@@ -24,6 +24,10 @@ use Cake\Log\Log;
 
 class OfflineBoxCommand extends Command
 {
+    // Leave blank unless projects share a php.ini. 'UPDATECASE_' reads UPDATECASE_OFFLINEBOX_S3_KEY
+    // and so on. A prefixed project never falls back to the plain names.
+    public const SETTING_PREFIX = '';
+
     // Public so the admin validation page shows the same list that gets backed up.
     public const CONNECTIONS = [
         'default' => ['exclude' => ''],
@@ -37,6 +41,7 @@ class OfflineBoxCommand extends Command
             'spaceRegion' => self::setting('OFFLINEBOX_S3_REGION'),
             'spaceName' => self::setting('OFFLINEBOX_S3_BUCKET'),
             'spaceEndpoint' => self::setting('OFFLINEBOX_S3_ENDPOINT'),
+            'settingPrefix' => self::SETTING_PREFIX,
         ];
     }
 
@@ -117,6 +122,8 @@ class OfflineBoxCommand extends Command
 
     private static function setting(string $name): string
     {
+        $name = self::SETTING_PREFIX . $name;
+
         return (string)(get_cfg_var($name) ?: env($name) ?: '');
     }
 }

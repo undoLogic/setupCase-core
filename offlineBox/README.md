@@ -107,7 +107,7 @@ Don't rewrite or "improve" the class inside the host project. Project-specific b
 | `templates/element/2026/admin/offlineBox/index_rows.php` | same path |
 | `templates/element/2026/admin/offlineBox/index_install.php` | same path |
 
-**4. Edit the command for the project.** This is the only copied file you edit. Set `CONNECTIONS` to the project's real connections (see `## Choosing tables`), and ask the developer which tables to exclude. Add the failure alert at the failure hook, using the project's existing email or queue. `SetupCase::sendEmail()` may contain a `die()` for the live environment, so check it before relying on it.
+**4. Edit the command for the project.** This is the only copied file you edit. Ask the developer whether another project shares this server's `php.ini`. If so, set `SETTING_PREFIX` (see `## Storage setup`). Set `CONNECTIONS` to the project's real connections (see `## Choosing tables`), and ask the developer which tables to exclude. Add the failure alert at the failure hook, using the project's existing email or queue. `SetupCase::sendEmail()` may contain a `die()` for the live environment, so check it before relying on it.
 
 **5. Set the storage credentials.** See `## Storage setup`. Ask the developer for the values. Never commit them, and never write them in a tracked file.
 
@@ -212,6 +212,24 @@ OFFLINEBOX_S3_BUCKET = "myproject-offlinebox"
 ```
 
 The admin page runs under web PHP, so that `php.ini` needs them too for its Storage section to pass.
+
+**Projects sharing one `php.ini`.** Give each project its own key and bucket, and set a prefix in its `src/Command/OfflineBoxCommand.php`. Leave the prefix blank when a project has the file to itself.
+
+```php
+public const SETTING_PREFIX = 'UPDATECASE_';
+```
+
+```ini
+UPDATECASE_OFFLINEBOX_S3_KEY = "..."
+UPDATECASE_OFFLINEBOX_S3_SECRET = "..."
+UPDATECASE_OFFLINEBOX_S3_REGION = "nyc3"
+UPDATECASE_OFFLINEBOX_S3_BUCKET = "updatecase-offlinebox"
+```
+
+- Local Docker uses the same prefixed names in `docker-compose.yml`.
+- A prefixed project reads only its prefixed names and never falls back to the plain ones, so a forgotten setting fails instead of writing to another project's bucket. The Storage section and the Installation section show the exact names to add.
+- Two projects must never share a bucket: each would overwrite the other's `backups_recent/default.sql`, and one project's backups would hide the other's failures on the admin page.
+- Separate keys don't fully separate the projects. Any PHP code on the server can read everything in that `php.ini`, so a hacked project can read the other project's key. Separate keys do let you limit each key to its own bucket and revoke one without touching the other. Full separation needs different server users and secrets the other user can't read.
 
 ### 3. Check it
 
@@ -496,6 +514,9 @@ Phase 1 only. All scenarios are manual, against a test bucket and a throwaway da
 - [ ] The page works at phone width.
 - [x] The Installation section shows the check, backup and cron commands with this server's folder filled in.
 - [x] The Storage section labels each setting with its exact `php.ini` or environment name, and never shows its value.
+- [x] With `SETTING_PREFIX` set, `--check` and the Installation section use the prefixed names.
+- [ ] With `SETTING_PREFIX` set, a real backup reaches that project's own bucket.
+- [x] With `SETTING_PREFIX` set and only the plain names present, the settings show as missing and the backup fails.
 - [x] The `php.ini` block from the Installation section works once its values are filled in.
 - [ ] `--check` reports the same checks from the CLI, changes nothing, and exits non-zero on a problem.
 
