@@ -380,8 +380,7 @@ Silence gets flagged, with no storage keys anywhere but the server.
 
 A machine in the office holds the data and proves it restores.
 
-- Local client pulls backups (Windows exists in the separate `undoLogic/offlineBox` repo; add Linux and macOS)
-- Fix the archive re-download loop with a bucket lifecycle rule or by syncing only recent files. The client moves old files out of `Current`, so the next `aws s3 sync` downloads them again.
+- Local client pulls backups and prunes its local copies. Windows is in `localClient/` (see its README); add Linux and macOS
 - Automated restore check: load the latest dump into a throwaway MySQL container of the same major version (5.7), compare table and row counts, confirm the newest record is recent, log pass or fail
 - Move local credentials into a protected store
 
@@ -469,7 +468,7 @@ Phase 1 only. All scenarios are manual, against a test bucket and a throwaway da
 - [ ] A failure appears in `logs/cli-error.log` and is counted by the Status Endpoint.
 - [ ] On the real server, the output and `--check` name the real database, not a dev one.
 - [ ] No `.sql` file remains in `TMP` after a success, a failed dump or a failed upload.
-- [ ] The Windows client's example config finds the uploaded objects under `backups/`.
+- [ ] The Windows client's example config finds the uploaded objects under `backups/` (tracked in `localClient/README.md`).
 
 ### Restore
 
