@@ -4,7 +4,7 @@
 
 The local client pulls OfflineBox backups from S3-compatible storage onto a Windows machine in your office, then prunes the local copies so they stay manageable forever. It never touches the bucket.
 
-This folder is self-contained. Download `localClient/` on its own and set it up on any Windows machine.
+This folder is self-contained. `install.ps1` fetches it on its own, so you can set it up on any Windows machine.
 
 **Status (2026-11-05):** tested on Linux with PowerShell 7 against a fake S3 server. Not yet run on Windows, on PowerShell 5.1 or against a real bucket.
 
@@ -12,6 +12,7 @@ This folder is self-contained. Download `localClient/` on its own and set it up 
 
 | File | Purpose |
 |---|---|
+| `install.ps1` | Installs or updates the other files |
 | `offlineBox.ps1` | The script Task Scheduler runs daily |
 | `config.example.json` | Template; copy to `config.json` and fill in |
 | `.gitignore` | Keeps `config.json` out of git |
@@ -126,8 +127,13 @@ Keys are stored as plain text. Keep the machine's disk encrypted and its user ac
 
 1. Install the AWS CLI and confirm `aws --version` works in PowerShell.
 2. Create a read-only key for each bucket with your storage provider.
-3. Copy `localClient/` to the machine, e.g. `D:\OfflineBox\localClient\`.
-4. Copy `config.example.json` to `config.json` and fill in each backup set.
+3. Open [`install.ps1` on GitHub](https://github.com/undoLogic/setupCase-core/blob/main/offlineBox/localClient/install.ps1) and click **Download raw file**. Move it into the folder the client will live in, e.g. `D:\OfflineBox\localClient\`, because it downloads into its own folder. Then run it:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File D:\OfflineBox\localClient\install.ps1
+   ```
+
+4. Fill in each backup set in the new `config.json`.
 5. Run once by hand and check the log:
 
    ```powershell
@@ -139,6 +145,8 @@ Keys are stored as plain text. Keep the machine's disk encrypted and its user ac
    - Arguments: `-ExecutionPolicy Bypass -File D:\OfflineBox\localClient\offlineBox.ps1`
    - Run whether the user is logged on or not
 7. After a few weeks of clean dry-run logs, set `DryRun` to `false`.
+
+To update the client later, run `install.ps1` again. It replaces the other files and keeps your `config.json`. It doesn't update itself.
 
 ## Log format
 
@@ -224,6 +232,20 @@ This is MVP work, so there are no automated tests. A ticked scenario ran on Linu
 - [x] An absolute `LogFile` is used as written.
 - [x] A failing set is logged, the next set still runs, and the exit code is non-zero.
 
+### Install
+
+**Intent:** One downloaded file sets up the client, and updating it never costs you your settings.
+
+**Surfaces:**
+- `install.ps1`
+
+#### Scenarios
+
+- [x] It downloads the client files into its own folder, whatever folder it's started from.
+- [x] It creates `config.json` from the example on the first run.
+- [x] A second run keeps an edited `config.json`.
+- [x] A failed download leaves the existing files in place, reports the error and exits non-zero.
+
 ### Real Windows machine
 
 **Intent:** The client works where it will actually run.
@@ -237,6 +259,7 @@ This is MVP work, so there are no automated tests. A ticked scenario ran on Linu
 #### Scenarios
 
 - [ ] A manual run works on Windows PowerShell 5.1.
+- [ ] `install.ps1` downloaded through a browser runs with the command in Setup.
 - [ ] A read-only key can list and download, and can't upload or delete.
 - [ ] The example config finds the objects under `backups/` in a real bucket.
 - [ ] A large backup downloads completely.
