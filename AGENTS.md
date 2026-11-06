@@ -1131,6 +1131,89 @@ They live in `docs/journeys/`, one markdown file per flow. Before creating or ed
 
 ---
 
+## The SetupCase standard
+
+**Standard last updated:** 2026-11-06
+
+The SetupCase standard is the minimum every project built on SetupCase should meet. It is written as promises to the owner, not design choices.
+
+### Profiles
+
+Every project's README states its profile at the very top. There are two profiles:
+
+- **web**: a public website, found on Google and visited by the public.
+- **software**: an app behind a login, used by staff or clients.
+
+A project can be **web + software** (for example a public intro page plus an app behind the login). Then apply the web list to the public pages and the software list to everything behind the login.
+
+If a project has no README yet, default to the **web** profile.
+
+### Web checklist
+
+Visitors:
+
+- Works on phone, tablet and desktop.
+- Loads fast.
+- HTTPS (padlock) everywhere.
+- The menu is always easy to reach.
+- Phone numbers are tap-to-call.
+- Forms confirm they were sent.
+- A proper "page not found" page on LIVE. Each environment has its own debug setting: pending shows full errors for testing, and LIVE has `debug` off, so visitors never see error details.
+- No broken links.
+
+Owner:
+
+- Visitors never have to clear their browser cache to see changes: changed CSS and JS files use dated filenames (see "Asset Cache Busting (Dated Filenames)").
+- Every form submission notifies the owner.
+- Proper page titles and descriptions.
+- A sitemap.
+- Only if the client gives us access to their **own** Google Search Console: connected, with the sitemap submitted to Google. Otherwise mark this n/a. The client always owns their Google accounts; we are added as a user, never the owner.
+- A nice preview when a link is shared.
+
+Under the hood:
+
+- Keys and config outside the webroot; no secrets in the repo.
+- Form bot check in place.
+- Error alerts set up.
+
+With UpdateCase installed (the managed service). A basic SetupCase site may have hard-coded content, so mark these n/a until then:
+
+- Content is no longer hard-coded; the owner can edit it.
+- All form submissions are kept safely.
+
+### Software checklist
+
+- Works on the devices it's used on.
+- HTTPS everywhere.
+- CSRF protection on.
+- Keys and config outside the webroot; no secrets in the repo.
+- Not indexed by Google (behind the login).
+- Error alerts set up.
+- Backups in place: [OfflineBox](https://www.OfflineBox.com) is connected to automate a daily data backup to S3.
+
+### README format
+
+At the very top of the README:
+
+```
+Profile: web | software | web + software
+SetupCase standard last checked: YYYY-MM-DD
+
+Standard status:
+- [x] item
+- [ ] item (missing)
+- [n/a] item (not applicable, with a short reason)
+```
+
+### Running the check
+
+- Only run it when asked ("run the standards check"). Don't run it every session.
+- Read the profile from the README and apply the matching list or lists.
+- Check each item, mark it done, missing or n/a, and set the last-checked date to today.
+- If the standard was updated after a project's last-checked date, the project is due a re-check. Mention it when working on the project, but don't run it unasked.
+
+---
+
 # Local Docker Network Troubleshooting
 
 If a user reports slow uploads (downloads fine), sites timing out, or internet
