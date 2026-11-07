@@ -1189,7 +1189,7 @@ With UpdateCase installed (the managed service). A basic SetupCase site may have
 - Keys and config outside the webroot; no secrets in the repo.
 - Not indexed by Google (behind the login).
 - Error alerts set up.
-- Backups in place: [OfflineBox](https://www.OfflineBox.com) is connected to automate a daily data backup to S3.
+- Backups in place: [OfflineBox](https://www.OfflineBox.com) is connected to automate a daily data backup to S3. Install it from https://github.com/undoLogic/offlineBox (follow its README).
 
 ### README format
 
