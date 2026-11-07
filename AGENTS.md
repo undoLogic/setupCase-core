@@ -75,6 +75,7 @@ Prefix RBAC answers who can reach an action, scoping answers which rows it may t
 - Any action that changes state must be POST and must never be reachable by GET. This includes create, update, delete, toggles, reordering, resets, and side effects such as sending mail.
 - This holds regardless of prefix or portal access. Prefixes authorize who can reach an action, not whether the request was intended; browsers, link previews, and scanners follow GET links automatically, so a state change must never ride on a GET.
 - To debug a state-changing action, submit the form once and refresh (the browser re-sends the POST), or call the Table method directly from a console command. Never convert the action to GET for convenience.
+- Exception: the UpdateCase remote sync action (`PagesController::sync()` calling `$this->updateCase->receiveSync()`) stays GET. UpdateCase itself calls it, and `receiveSync()` checks the Referer and only pulls published content into the local cache. See "UpdateCase Client Setup".
 
 ## Non-HTTP Entry Points
 
@@ -771,6 +772,17 @@ The Markdown import format must be deterministic and machine-parseable. Do not r
 
 ---
 
+## UpdateCase Client Setup
+
+When a project has UpdateCase installed:
+
+- The client (`src/Util/UpdateCaseUtil_10.php`) is created once in `AppController::beforeFilter()`, so every controller has `$this->updateCase` and every view has `$updateCase`. Do not create it again in individual actions.
+- The UpdateCase site key (`syncKey`) is low security: it only lets a site pull its own published content. It may be hard-coded in `beforeFilter()` and committed. This is an accepted exception to "no secrets in the repo"; other keys and credentials still follow that rule.
+- The remote sync action (`PagesController::sync()` -> `receiveSync()`) is called by UpdateCase with GET. This is an accepted exception to "HTTP Method by Effect": keep it GET and don't convert it to POST.
+- Keep the cache at `tmp/updateCase/` (outside the webroot) and add `/sourceFiles/tmp/updateCase/` to `.gitignore`. Images and files are streamed through `PagesController::getImage()` / `file()`.
+
+---
+
 ## Hierarchy
 
 UpdateCase content follows this hierarchy:
@@ -1190,7 +1202,7 @@ Owner:
 
 Under the hood:
 
-- Keys and config outside the webroot; no secrets in the repo.
+- Keys and config outside the webroot; no secrets in the repo (the UpdateCase site key is an accepted exception, see "UpdateCase Client Setup").
 - Form bot check in place.
 - Error alerts set up.
 
@@ -1204,7 +1216,7 @@ With UpdateCase installed (the managed service). A basic SetupCase site may have
 - Works on the devices it's used on.
 - HTTPS everywhere.
 - CSRF protection on.
-- Keys and config outside the webroot; no secrets in the repo.
+- Keys and config outside the webroot; no secrets in the repo (the UpdateCase site key is an accepted exception, see "UpdateCase Client Setup").
 - Not indexed by Google (behind the login).
 - Error alerts set up.
 - Backups in place: [OfflineBox](https://www.OfflineBox.com) is connected to automate a daily data backup to S3. Install it from https://github.com/undoLogic/offlineBox (follow its README).
