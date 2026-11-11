@@ -213,39 +213,6 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_renderVar', []);
     }
 
-    public function statusEndpoint()
-    {
-        $this->set('codeBlocks_title', 'Status Endpoint');
-        $this->set(
-            'codeBlocks_subTitle',
-            'Token-protected /en/status reports error and warning counts for the last 24 hours. Keep it open in a tab: it re-checks hourly and its favicon turns red on errors.'
-        );
-
-        // Spec: docs/features/MVP-Status-Endpoint.md
-        $this->set('statusExampleUrl', 'https://www.example.com/en/status');
-        $this->set('statusLocalUrl', Router::url(['prefix' => false, 'controller' => 'Status', 'action' => 'index', 'language' => 'en'], true));
-
-        $this->set('codeBlocks_renderFiles', [
-            'Controller: src/Controller/StatusController.php' => APP . 'Controller/StatusController.php',
-            'Monitor page: templates/Status/index.php' => APP . '../templates/Status/index.php',
-            'Monitor JS: webroot/js/status-endpoint.js' => WWW_ROOT . 'js/status-endpoint.js',
-            'Monitor CSS: webroot/css/status-endpoint.css' => WWW_ROOT . 'css/status-endpoint.css',
-        ]);
-        $this->set('codeBlocks_renderVar', []);
-    }
-
-    /**
-     * Public, read-only copy of the Files S3 Offload page (guide + source files),
-     * so an AI can read it without a login. The working page is Staff/Files/index.
-     */
-    public function filesS3Offload()
-    {
-        $this->set('codeBlocks_title', 'Files S3 Offload');
-        $this->set('codeBlocks_subTitle', \App\Controller\Staff\FilesController::CODE_BLOCK_SUBTITLE);
-        $this->set('codeBlocks_renderFiles', \App\Controller\Staff\FilesController::CODE_BLOCK_FILES);
-        $this->set('codeBlocks_renderVar', []);
-    }
-
     public function envVars()
     {
         $this->set('codeBlocks_title', 'ENV Vars');

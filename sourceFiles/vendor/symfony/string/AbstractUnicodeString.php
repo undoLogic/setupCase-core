@@ -229,6 +229,21 @@ abstract class AbstractUnicodeString extends AbstractString
         return $str;
     }
 
+    /**
+     * @param string $locale In the format language_region (e.g. tr_TR)
+     */
+    public function localeLower(string $locale): static
+    {
+        if (null !== $transliterator = $this->getLocaleTransliterator($locale, 'Lower')) {
+            $str = clone $this;
+            $str->string = $transliterator->transliterate($str->string);
+
+            return $str;
+        }
+
+        return $this->lower();
+    }
+
     public function match(string $regexp, int $flags = 0, int $offset = 0): array
     {
         $match = ((\PREG_PATTERN_ORDER | \PREG_SET_ORDER) & $flags) ? 'preg_match_all' : 'preg_match';
@@ -252,7 +267,7 @@ abstract class AbstractUnicodeString extends AbstractString
 
     public function normalize(int $form = self::NFC): static
     {
-        if (!\in_array($form, [self::NFC, self::NFD, self::NFKC, self::NFKD])) {
+        if (!\in_array($form, [self::NFC, self::NFD, self::NFKC, self::NFKD], true)) {
             throw new InvalidArgumentException('Unsupported normalization form.');
         }
 
@@ -348,7 +363,7 @@ abstract class AbstractUnicodeString extends AbstractString
     public function reverse(): static
     {
         $str = clone $this;
-        $str->string = implode('', array_reverse(preg_split('/(\X)/u', $str->string, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY)));
+        $str->string = implode('', array_reverse(grapheme_str_split($str->string)));
 
         return $str;
     }
@@ -372,12 +387,34 @@ abstract class AbstractUnicodeString extends AbstractString
         return $str;
     }
 
+    /**
+     * @param string $locale In the format language_region (e.g. tr_TR)
+     */
+    public function localeTitle(string $locale): static
+    {
+        $str = clone $this;
+
+        if (null !== $transliterator = $this->getLocaleTransliterator($locale, 'Title')) {
+            $str->string = $transliterator->transliterate($str->string);
+        } else {
+            $str->string = mb_convert_case($str->string, \MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return $str;
+    }
+
     public function trim(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): static
     {
-        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" !== $chars && !preg_match('//u', $chars)) {
-            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        if ('' === $chars) {
+            return clone $this;
         }
-        $chars = preg_quote($chars);
+        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" === $chars) {
+            $chars = preg_quote($chars);
+        } elseif (false === $ranges = preg_match('/\.\./u', $chars)) {
+            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        } else {
+            $chars = $ranges ? self::quoteCharRanges($chars) : preg_quote($chars);
+        }
 
         $str = clone $this;
         $str->string = preg_replace("{^[$chars]++|[$chars]++$}uD", '', $str->string);
@@ -387,10 +424,16 @@ abstract class AbstractUnicodeString extends AbstractString
 
     public function trimEnd(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): static
     {
-        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" !== $chars && !preg_match('//u', $chars)) {
-            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        if ('' === $chars) {
+            return clone $this;
         }
-        $chars = preg_quote($chars);
+        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" === $chars) {
+            $chars = preg_quote($chars);
+        } elseif (false === $ranges = preg_match('/\.\./u', $chars)) {
+            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        } else {
+            $chars = $ranges ? self::quoteCharRanges($chars) : preg_quote($chars);
+        }
 
         $str = clone $this;
         $str->string = preg_replace("{[$chars]++$}uD", '', $str->string);
@@ -420,10 +463,16 @@ abstract class AbstractUnicodeString extends AbstractString
 
     public function trimStart(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): static
     {
-        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" !== $chars && !preg_match('//u', $chars)) {
-            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        if ('' === $chars) {
+            return clone $this;
         }
-        $chars = preg_quote($chars);
+        if (" \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}" === $chars) {
+            $chars = preg_quote($chars);
+        } elseif (false === $ranges = preg_match('/\.\./u', $chars)) {
+            throw new InvalidArgumentException('Invalid UTF-8 chars.');
+        } else {
+            $chars = $ranges ? self::quoteCharRanges($chars) : preg_quote($chars);
+        }
 
         $str = clone $this;
         $str->string = preg_replace("{^[$chars]++}uD", '', $str->string);
@@ -457,6 +506,21 @@ abstract class AbstractUnicodeString extends AbstractString
         $str->string = mb_strtoupper($str->string, 'UTF-8');
 
         return $str;
+    }
+
+    /**
+     * @param string $locale In the format language_region (e.g. tr_TR)
+     */
+    public function localeUpper(string $locale): static
+    {
+        if (null !== $transliterator = $this->getLocaleTransliterator($locale, 'Upper')) {
+            $str = clone $this;
+            $str->string = $transliterator->transliterate($str->string);
+
+            return $str;
+        }
+
+        return $this->upper();
     }
 
     public function width(bool $ignoreAnsiDecoration = true): int
@@ -496,6 +560,27 @@ abstract class AbstractUnicodeString extends AbstractString
         }
 
         return $width;
+    }
+
+    /**
+     * Quotes $chars for a character class, reading "x..y" as a range of code points like trim() does with bytes.
+     */
+    private static function quoteCharRanges(string $chars): string
+    {
+        $chars = preg_split('//u', $chars, -1, \PREG_SPLIT_NO_EMPTY);
+        $n = \count($chars);
+        $class = '';
+
+        for ($i = 0; $i < $n; ++$i) {
+            if ($i + 3 < $n && '.' === $chars[$i + 1] && '.' === $chars[$i + 2] && ($from = mb_ord($chars[$i], 'UTF-8')) <= ($to = mb_ord($chars[$i + 3], 'UTF-8'))) {
+                $class .= \sprintf('\x{%X}-\x{%X}', $from, $to);
+                $i += 3;
+            } elseif ('.' !== $chars[$i] || '.' !== ($chars[$i + 1] ?? '')) {
+                $class .= preg_quote($chars[$i]);
+            }
+        }
+
+        return $class;
     }
 
     private function pad(int $len, self $pad, int $type): static
@@ -548,7 +633,9 @@ abstract class AbstractUnicodeString extends AbstractString
             if ($joined) {
                 $joined = false;
 
-                continue;
+                if ("\x7F" < $c[0] && preg_match(self::EMOJI_REGEX, $c)) {
+                    continue;
+                }
             }
 
             $codePoint = mb_ord($c, 'UTF-8');
@@ -658,5 +745,34 @@ abstract class AbstractUnicodeString extends AbstractString
         }
 
         return $width;
+    }
+
+    private function getLocaleTransliterator(string $locale, string $id): ?\Transliterator
+    {
+        $rule = $locale.'-'.$id;
+        if (\array_key_exists($rule, self::$transliterators)) {
+            return self::$transliterators[$rule];
+        }
+
+        if (null !== $transliterator = self::$transliterators[$rule] = \Transliterator::create($rule)) {
+            return $transliterator;
+        }
+
+        // Try to find a parent locale (nl_BE -> nl)
+        if (false === $i = strpos($locale, '_')) {
+            return null;
+        }
+
+        $parentRule = substr_replace($locale, '-'.$id, $i);
+
+        // Parent locale was already cached, return and store as current locale
+        if (\array_key_exists($parentRule, self::$transliterators)) {
+            return self::$transliterators[$rule] = self::$transliterators[$parentRule];
+        }
+
+        // Create transliterator based on parent locale and cache the result on both initial and parent locale values
+        $transliterator = \Transliterator::create($parentRule);
+
+        return self::$transliterators[$rule] = self::$transliterators[$parentRule] = $transliterator;
     }
 }

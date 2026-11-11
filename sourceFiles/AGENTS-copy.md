@@ -75,6 +75,7 @@ Prefix RBAC answers who can reach an action, scoping answers which rows it may t
 - Any action that changes state must be POST and must never be reachable by GET. This includes create, update, delete, toggles, reordering, resets, and side effects such as sending mail.
 - This holds regardless of prefix or portal access. Prefixes authorize who can reach an action, not whether the request was intended; browsers, link previews, and scanners follow GET links automatically, so a state change must never ride on a GET.
 - To debug a state-changing action, submit the form once and refresh (the browser re-sends the POST), or call the Table method directly from a console command. Never convert the action to GET for convenience.
+- Exception: the UpdateCase remote sync action (`PagesController::sync()` calling `$this->updateCase->receiveSync()`) stays GET. UpdateCase itself calls it, and `receiveSync()` checks the Referer and only pulls published content into the local cache. See "UpdateCase Client Setup".
 
 ## Non-HTTP Entry Points
 
@@ -392,6 +393,24 @@ sourceFiles/config/schema/YYYY-MM-DD.sql
 - Use the date the change is introduced for the filename.
 - Append related changes to that day's file so the database history remains clear over time.
 - Do not add new SQL changes only to an older consolidated schema file.
+
+---
+
+## Column Naming: Internal vs External IDs
+
+A column ending in `_id` always means an internal relationship: an integer key pointing at another table in this database (e.g. `user_id`, `group_id`). Nothing else may use the `_id` suffix.
+
+IDs that come from outside systems are named in camelCase ending in `ID`, with no underscore before it:
+
+```text
+stripeCustomerID     not  stripe_customer_id
+googleID             not  google_id
+paypalPayerID        not  paypal_payer_id
+```
+
+- Why: tools rely on `_id` meaning "internal key". OfflineBox anonymized backups keep integer `_id` columns real so relationships still work, and fake everything else. An external ID named `_id` could leak into dev copies. CakePHP's `bake` also guesses associations from `_id` columns.
+- Apply this to new columns. Rename existing external `_id` columns only when asked, as a schema change (see above), and update every reference in the same change.
+- Internal keys stay integers. Don't store an internal key in a text column.
 
 ---
 
@@ -753,6 +772,17 @@ The Markdown import format must be deterministic and machine-parseable. Do not r
 
 ---
 
+## UpdateCase Client Setup
+
+When a project has UpdateCase installed:
+
+- The client (`src/Util/UpdateCaseUtil_10.php`) is created once in `AppController::beforeFilter()`, so every controller has `$this->updateCase` and every view has `$updateCase`. Do not create it again in individual actions.
+- The UpdateCase site key (`syncKey`) is low security: it only lets a site pull its own published content. It may be hard-coded in `beforeFilter()` and committed. This is an accepted exception to "no secrets in the repo"; other keys and credentials still follow that rule.
+- The remote sync action (`PagesController::sync()` -> `receiveSync()`) is called by UpdateCase with GET. This is an accepted exception to "HTTP Method by Effect": keep it GET and don't convert it to POST.
+- Keep the cache at `tmp/updateCase/` (outside the webroot) and add `/sourceFiles/tmp/updateCase/` to `.gitignore`. Images and files are streamed through `PagesController::getImage()` / `file()`.
+
+---
+
 ## Hierarchy
 
 UpdateCase content follows this hierarchy:
@@ -1107,6 +1137,12 @@ Only reorganize what the author wrote. Never invent a title, description, severi
 
 ---
 
+## Software Timeline
+
+Per-quarter software history lives in `docs/timeline/`. Before creating or editing a timeline, read `docs/timeline/README.md` for the format and rules.
+
+---
+
 ## Journeys
 
 Journeys are step-by-step user flows (e.g. submitting a quote) that generate screenshots and a client-facing PDF.
@@ -1122,3 +1158,108 @@ They live in `docs/journeys/`, one markdown file per flow. Before creating or ed
 - The redirect accepts local paths only (`/...`; no `//`, `\`, or hosts). Never relax this guard.
 - The AI user has no password and only the access its own role and group give it. It is created only by the Docker seed SQL, never on pending or live.
 - Any change to `aiAccess`, its environment check, or the AI user needs explicit human review.
+
+---
+
+## The SetupCase standard
+
+**Standard last updated:** 2026-11-06
+
+The SetupCase standard is the minimum every project built on SetupCase should meet. It is written as promises to the owner, not design choices.
+
+### Profiles
+
+Every project's README states its profile at the very top. There are two profiles:
+
+- **web**: a public website, found on Google and visited by the public.
+- **software**: an app behind a login, used by staff or clients.
+
+A project can be **web + software** (for example a public intro page plus an app behind the login). Then apply the web list to the public pages and the software list to everything behind the login.
+
+If a project has no README yet, default to the **web** profile.
+
+### Web checklist
+
+Visitors:
+
+- Works on phone, tablet and desktop.
+- Loads fast.
+- HTTPS (padlock) everywhere.
+- The menu is always easy to reach.
+- Phone numbers are tap-to-call.
+- Forms confirm they were sent.
+- A proper "page not found" page on LIVE. Each environment has its own debug setting: pending shows full errors for testing, and LIVE has `debug` off, so visitors never see error details.
+- No broken links.
+
+Owner:
+
+- Visitors never have to clear their browser cache to see changes: changed CSS and JS files use dated filenames (see "Asset Cache Busting (Dated Filenames)").
+- Every form submission notifies the owner.
+- Proper page titles and descriptions.
+- A sitemap.
+- Only if the client gives us access to their **own** Google Search Console: connected, with the sitemap submitted to Google. Otherwise mark this n/a. The client always owns their Google accounts; we are added as a user, never the owner.
+- A nice preview when a link is shared.
+
+Under the hood:
+
+- Keys and config outside the webroot; no secrets in the repo (the UpdateCase site key is an accepted exception, see "UpdateCase Client Setup").
+- Form bot check in place.
+- Error alerts set up.
+
+With UpdateCase installed (the managed service). A basic SetupCase site may have hard-coded content, so mark these n/a until then:
+
+- Content is no longer hard-coded; the owner can edit it.
+- All form submissions are kept safely.
+
+### Software checklist
+
+- Works on the devices it's used on.
+- HTTPS everywhere.
+- CSRF protection on.
+- Keys and config outside the webroot; no secrets in the repo (the UpdateCase site key is an accepted exception, see "UpdateCase Client Setup").
+- Not indexed by Google (behind the login).
+- Error alerts set up.
+- Backups in place: [OfflineBox](https://www.OfflineBox.com) is connected to automate a daily data backup to S3. Install it from https://github.com/undoLogic/offlineBox (follow its README).
+
+### README format
+
+At the very top of the README:
+
+```
+Profile: web | software | web + software
+SetupCase standard last checked: YYYY-MM-DD
+
+Standard status:
+- [x] item
+- [ ] item (missing)
+- [n/a] item (not applicable, with a short reason)
+```
+
+### Running the check
+
+- Only run it when asked ("run the standards check"). Don't run it every session.
+- Read the profile from the README and apply the matching list or lists.
+- Check each item, mark it done, missing or n/a, and set the last-checked date to today.
+- If the standard was updated after a project's last-checked date, the project is due a re-check. Mention it when working on the project, but don't run it unasked.
+
+---
+
+# Local Docker Network Troubleshooting
+
+If a user reports slow uploads (downloads fine), sites timing out, or internet
+dropouts on a machine running these Docker projects, suspect a Docker network
+holding the router's address (often after moving between home and office). Follow
+**"Runbook for AI assistants"** in `dockerLinux/README.md` → Troubleshooting before
+changing anything.
+
+- Never use `docker compose down -v`, `docker volume prune`, or `--volumes` prunes to fix network problems. They delete project databases.
+- Ask before restarting Docker or recreating a running project.
+- Keep `docker_pick_subnet` in `dockerLinux/docker-common.sh` and the `networks:` block in `dockerLinux/docker-compose.yml` when editing those files.
+
+---
+
+# Licensing
+
+This codebase is Apache-2.0 licensed by undoLogic. When copying or adapting
+files from it, keep the copyright header and carry the LICENSE and NOTICE
+files into the destination project. Do not remove attribution.
