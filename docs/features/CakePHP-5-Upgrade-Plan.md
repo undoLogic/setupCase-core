@@ -109,11 +109,11 @@ The same idea applies: don't upgrade in place.
 **Intent:** The existing 4.x build still works after moving the scripts.
 **Surfaces:** `init-web/4.x/`, `sourceFiles/`
 
-- [ ] `init-web/4.x/1-Install.php` runs to the end with no failures
+- [x] `init-web/4.x/1-Install.php` runs to the end with no failures (2026-11-11, exit 0)
 - [ ] A rebuild diffed against the previous `sourceFiles/` shows no unexpected differences
-- [ ] README links point to the new entry point
-- [ ] `3-View-CodeBlocks.php` opens `/sourceFiles/CodeBlocks` from its new location
-- [ ] AGENTS.md has the directory map
+- [x] README links point to the new entry point
+- [x] `3-View-CodeBlocks.php` opens `/sourceFiles/CodeBlocks` from its new location
+- [x] AGENTS.md has the directory map
 
 ### CakePHP 5 foundation
 

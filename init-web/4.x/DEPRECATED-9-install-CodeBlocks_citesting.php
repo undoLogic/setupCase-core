@@ -1,6 +1,6 @@
 <?php
 
-$sourceFilesDir = dirname(__DIR__) . '/sourceFiles';
+$sourceFilesDir = dirname(__DIR__, 2) . '/sourceFiles';
 $githubDir = $sourceFilesDir . '/.github';
 $workflowDir = $githubDir . '/workflows';
 $workflowFile = $workflowDir . '/ci.yml';

@@ -40,7 +40,7 @@ SetupCase Core intentionally chooses a preferred technology for each supported p
 
 | Platform | Current Technology | Current Location | Status |
 |---|---|---|---|
-| Web | CakePHP 4.x / PHP | `init-web/`, `codeBlocks/cakePHP/4.x/`, `sourceFiles/` | Primary focus |
+| Web | CakePHP 4.x / PHP | `init-web/4.x/`, `codeBlocks/cakePHP/4.x/`, `sourceFiles/` | Primary focus |
 | Mobile | Vue + Vite (template) | `mobile-template/` | Experimental / future |
 | Desktop | Python | `init-desktopApp/`, `template_localApp/` | Experimental / future |
 
@@ -68,7 +68,7 @@ This section records what the code actually does today, so the target workflow c
 │       ├── config/                 app_DEV.php, bootstrap-setupCase.php
 │       ├── src/                    Controllers, Middleware, Models, Util, View helpers
 │       └── templates/              CodeBlocks demo pages, Users, layouts, elements, email
-├── init-web/                       Deterministic web build scripts (browser-run)
+├── init-web/4.x/                   Deterministic web build scripts (browser-run)
 ├── install_setupCaseCore_modules.sh  Pulls factory modules from GitHub main into an existing project
 ├── dockerLinux/ dockerWSL/ dockerWIN/ dockerIDE/ dockerCOPYINTO/
 ├── launchPad_linux/ launchPad_win/
@@ -86,17 +86,17 @@ This section records what the code actually does today, so the target workflow c
 | `main` | No | The factory. GitHub template source for new projects. |
 | `testFlight` | Yes (generated + developed) | The running proof. Factory + a built and extended app. |
 
-New projects are created from `main` using GitHub **Use this template** (see root `README.md`). `init-web/5-Create-New-Project.php` is deprecated in favour of that.
+New projects are created from `main` using GitHub **Use this template** (see root `README.md`). `init-web/4.x/5-Create-New-Project.php` is deprecated in favour of that.
 
 ## Build Pipeline (web)
 
-Entry point: `http://localhost/init-web/1-Install.php` (after `dockerLinux/1buildDocker.sh` or `dockerWSL/1buildDocker.sh`).
+Entry point: `http://localhost/init-web/4.x/1-Install.php` (after `dockerLinux/1buildDocker.sh` or `dockerWSL/1buildDocker.sh`).
 
 | Step | Script | Kind | What it does |
 |---|---|---|---|
-| 1 | `init-web/1-Install.php` | Orchestrator | Runs step 2a and 2b as CLI sub-processes; stops on non-zero exit. |
-| 2a | `init-web/2-Install-Cake.php` | Framework install | `composer create-project cakephp/app:^4.0 sourceFiles` + `cakephp/authentication:^2.0`. Skips if `sourceFiles/` exists. |
-| 2b | `init-web/2-Install-CodeBlocks.php` | Sync + transform | `rsync` `codeBlocks/cakePHP/4.x/.` -> `sourceFiles/.`, removes `sourceFiles/.gitignore`, then includes the `9-*` transforms. |
+| 1 | `init-web/4.x/1-Install.php` | Orchestrator | Runs step 2a and 2b as CLI sub-processes; stops on non-zero exit. |
+| 2a | `init-web/4.x/2-Install-Cake.php` | Framework install | `composer create-project cakephp/app:^4.0 sourceFiles` + `cakephp/authentication:^2.0`. Skips if `sourceFiles/` exists. |
+| 2b | `init-web/4.x/2-Install-CodeBlocks.php` | Sync + transform | `rsync` `codeBlocks/cakePHP/4.x/.` -> `sourceFiles/.`, removes `sourceFiles/.gitignore`, then includes the `9-*` transforms. |
 | 2b.1 | `9-Install-CodeBlocks_layout.php` | Transform | Layout wiring |
 | 2b.2 | `9-Install-CodeBlocks_routes.php` | Transform | Language/login routes, prefix routing in `config/routes.php` |
 | 2b.3 | `9-Install-CodeBlocks_bootstrap.php` | Transform | Loads `bootstrap-setupCase.php` |
@@ -106,17 +106,17 @@ Entry point: `http://localhost/init-web/1-Install.php` (after `dockerLinux/1buil
 | 2b.7 | `9-Install-CodeBlocks_helpers.php` | Transform | Loads Auth/Lang helpers in `AppView` |
 | 2b.8 | `9-Install-CodeBlocks_app.php` | Transform | `allowedLanguages` + `rbac` in `config/app.php` |
 | 2b.9 | `9-install-CodeBlocks_citesting.php` | Sync | Copies `codeBlocks/.github` -> `/.github` |
-| 3 | `init-web/3-View-CodeBlocks.php` | Redirect | Opens `/sourceFiles/CodeBlocks` |
+| 3 | `init-web/4.x/3-View-CodeBlocks.php` | Redirect | Opens `/sourceFiles/CodeBlocks` |
 
 The transforms follow a consistent pattern: read file, normalize line endings, check for a marker string, insert at a known anchor, fail if the anchor is missing. That pattern is the model for all future transforms.
 
-`init-web/2-install-CodeBlocks-MANUAL-STEPS.md` lists steps that were historically manual. Several are now covered by the `9-*` transforms; the remainder still need to be identified and either automated or explicitly kept manual.
+`init-web/4.x/2-install-CodeBlocks-MANUAL-STEPS.md` lists steps that were historically manual. Several are now covered by the `9-*` transforms; the remainder still need to be identified and either automated or explicitly kept manual.
 
 ## Reverse Path (TestFlight -> CodeBlocks)
 
 Two mechanisms exist today, and they disagree:
 
-- `init-web/8-Save-CodeBlocks.php` - hardcoded list of `sourceFiles` paths rsync-ed back into `codeBlocks/cakePHP/4.x/`.
+- `init-web/4.x/8-Save-CodeBlocks.php` - hardcoded list of `sourceFiles` paths rsync-ed back into `codeBlocks/cakePHP/4.x/`.
 - `codeBlocks/import_new_changes.sh` - older, separate hardcoded list (includes a non-existent `Model/Table/Users.php` and a pasted PHP snippet at the end).
 
 Neither records *when* the last promotion happened, so there is no reliable "changes since last update" boundary.
@@ -148,7 +148,7 @@ Found by comparing `codeBlocks/cakePHP/4.x/` against `sourceFiles/` on `testFlig
 
 ### Found by the Rebuild Test (2026-09-24)
 
-`sourceFiles/` was moved aside and `init-web/1-Install.php` run against the running Docker stack. CakePHP install and all transforms after the layout step succeeded; the build ended at the CI step (gap 6). Findings:
+`sourceFiles/` was moved aside and `init-web/4.x/1-Install.php` run against the running Docker stack. CakePHP install and all transforms after the layout step succeeded; the build ended at the CI step (gap 6). Findings:
 
 10. **Icon fonts silently fail.** `9-Install-CodeBlocks_layout.php` creates `webroot/icons/` but not `icons/fonts/`, so both `bootstrap-icons.woff*` downloads fail with PHP warnings, and the script still prints "Saved" because the `file_put_contents()` result is not checked. **Fixed 2026-09-24:** folder created; download or save failure stops the build with exit 1.
 11. **Dependencies are not pinned.** `2-Install-Cake.php` uses `cakephp/app:^4.0` and `cakephp/authentication:^2.0`, so each build resolves whatever is newest that day (this run: app skeleton 4.5.0, cakephp 4.6.5, authentication 2.11.3; about 300 `vendor/` files changed vs. TestFlight). Two builds on different days are not identical. Candidate fix: keep a tested `composer.lock` in CodeBlocks and install from it.
@@ -196,7 +196,7 @@ Reasoning:
 - `codeBlocks/cakePHP/4.x/` stays a pure payload: everything in it is synced into `sourceFiles/`. That keeps the build rsync, reverse sync (tree-as-manifest) and drift report simple, with no exclude lists to keep in step.
 - With only one CakePHP version, co-locating scripts with their version adds path changes and excludes for no current benefit.
 
-When 5.x arrives, version the transforms without putting them inside the payload folder, e.g. `init-web/cakePHP-4.x/` or a sibling `codeBlocks/cakePHP/4.x-init/`. The same applies to `2-Install-Cake.php` (hardcodes `cakephp/app:^4.0`).
+**Updated (2026-11-11):** the scripts moved to `init-web/4.x/`, and CakePHP 5 gets its own `init-web/5.x/`, still outside the payload folder. `init-web/4.x/2-Install-Cake.php` keeps `cakephp/app:^4.0`; the 5.x build locks to `~5.4.0`. See `docs/features/CakePHP-5-Upgrade-Plan.md`.
 
 Related: the rsync already copies `codeBlocks/cakePHP/4.x/README.md` over CakePHP's `sourceFiles/README.md`. `changeLog.md` would be copied too, so the build rsync must exclude `README.md` and `changeLog.md` (decided: both stay inside `4.x/` so each CakePHP version has its own).
 
@@ -222,7 +222,7 @@ Rule: **a file is either fully owned by CodeBlocks (synced) or owned by the fram
 
 ## Deterministic Transforms
 
-Rules every `init-web/9-*` transform must follow:
+Rules every `init-web/4.x/9-*` transform must follow:
 
 - **Idempotent.** Detect a marker and skip that edit; running the build twice produces the same result.
 - **Anchor or fail.** Insert at a known anchor; if the anchor is missing, fail loudly.
@@ -249,7 +249,7 @@ Features that need tables ship their SQL in `codeBlocks/cakePHP/4.x/config/schem
 Procedure:
 
 1. Pull the latest factory folders (`install_setupCaseCore_modules.sh`, or manually).
-2. Run `init-web/1-Install.php`. `2-Install-Cake.php` skips because `sourceFiles/` exists; CodeBlocks sync, transforms and schema step run.
+2. Run `init-web/4.x/1-Install.php`. `2-Install-Cake.php` skips because `sourceFiles/` exists; CodeBlocks sync, transforms and schema step run.
 
 Consequences:
 
@@ -356,11 +356,11 @@ Before deciding anything, produce a report with three lists:
 3. Group related commits and files into logical features.
 4. For each feature, classify every file:
    - **sync** - SetupCase-owned file, copy into `codeBlocks/cakePHP/4.x/`
-   - **transform** - change to a framework-owned file, add/extend an `init-web/9-*` script
+   - **transform** - change to a framework-owned file, add/extend an `init-web/4.x/9-*` script
    - **schema** - dated SQL into `codeBlocks/cakePHP/4.x/config/schema/`
    - **exclude** - project-specific or TestFlight-only; say why
 5. Apply the changes (factory paths only).
-6. Update `init-web/8-Save-CodeBlocks.php`: add every newly promoted synced file/folder, remove entries whose source no longer exists.
+6. Update `init-web/4.x/8-Save-CodeBlocks.php`: add every newly promoted synced file/folder, remove entries whose source no longer exists.
 7. Add a grouped entry to `codeBlocks/cakePHP/4.x/changeLog.md` with the source commit.
 8. Update `codeBlocks/cakePHP/4.x/README.md` / feature files if behaviour or procedure changed.
 9. Report: what was promoted, as what, what was excluded and why, and whether the rebuild check ran.
@@ -371,12 +371,12 @@ AI must not blindly copy every changed file into CodeBlocks. Do not `git add` / 
 
 A promotion is only proven when a fresh build reproduces it.
 
-Preferred (non-destructive, used 2026-09-24): copy `codeBlocks/`, `init-web/` and `AGENTS.md` into a temporary folder inside the repo (e.g. `.rebuild-check/`, so Docker can see it), run `php init-web/1-Install.php` there inside the container as `www-data`, compare its `sourceFiles/` with the real one (ignoring `vendor/`, `tmp/`, `logs/`, `composer.lock`, `config/app_local.php`), then delete the folder.
+Preferred (non-destructive, used 2026-09-24): copy `codeBlocks/`, `init-web/` and `AGENTS.md` into a temporary folder inside the repo (e.g. `.rebuild-check/`, so Docker can see it), run `php init-web/4.x/1-Install.php` there inside the container as `www-data`, compare its `sourceFiles/` with the real one (ignoring `vendor/`, `tmp/`, `logs/`, `composer.lock`, `config/app_local.php`), then delete the folder.
 
 Alternative (in place):
 
 1. Move `sourceFiles/` aside (don't delete it).
-2. Run `init-web/1-Install.php` (includes the schema step) against an empty database.
+2. Run `init-web/4.x/1-Install.php` (includes the schema step) against an empty database.
 3. For every file under `codeBlocks/cakePHP/4.x/`, the new `sourceFiles/` copy must be identical.
 4. For each transformed framework file, the new output must contain the promoted change.
 5. The promoted feature works in the rebuilt app.
@@ -435,7 +435,7 @@ Added reusable queued email sending with cron-driven processing and monitoring.
 `codeBlocks/cakePHP/4.x/README.md` explains the system (not each feature):
 
 - what the directory represents and which CakePHP version it targets
-- the sync vs. transform rule and where transforms live (`init-web/9-*`)
+- the sync vs. transform rule and where transforms live (`init-web/4.x/9-*`)
 - the build pipeline order
 - how TestFlight relates to CodeBlocks
 - how `Update CodeBlocks`, the drift report, and the rebuild check work
@@ -459,7 +459,7 @@ When the user asks to `Update CodeBlocks`, follow
 - Stop if `codeBlocks/cakePHP/4.x/` does not exist.
 - Boundary = `Source commit` in the latest entry of `codeBlocks/cakePHP/4.x/changeLog.md`.
 - Run the drift report first; classify each change as sync / transform / schema / exclude.
-- Keep the `init-web/8-Save-CodeBlocks.php` list in step with what was promoted.
+- Keep the `init-web/4.x/8-Save-CodeBlocks.php` list in step with what was promoted.
 - Only touch factory paths (`codeBlocks/`, `init-web/`, `docs/`); never commit `sourceFiles/` to `main`.
 - One changelog entry per logical feature, dated from Git.
 - New-project creation must remain deterministic and AI-free.
@@ -491,11 +491,11 @@ All decided 2026-09-24 by the project owner.
 
 | # | Topic | Decision |
 |---|---|---|
-| 1 | Reverse-sync tool | `init-web/8-Save-CodeBlocks.php` is the current tool and is kept. `codeBlocks/import_new_changes.sh` is old; merge anything still valid from it into 8-Save, then remove it. 8-Save keeps an explicit list, maintained by AI during `Update CodeBlocks` and evolving over time; the drift report checks the list. |
+| 1 | Reverse-sync tool | `init-web/4.x/8-Save-CodeBlocks.php` is the current tool and is kept. `codeBlocks/import_new_changes.sh` is old; merge anything still valid from it into 8-Save, then remove it. 8-Save keeps an explicit list, maintained by AI during `Update CodeBlocks` and evolving over time; the drift report checks the list. |
 | 2 | Drift report form | CLI script. See "Drift Report". |
 | 3 | Schema application | `init-web` step that applies dated SQL, once per file. See "Schema". |
 | 4 | CI files | Optional. Not every project uses CI; `9-install-CodeBlocks_citesting.php` must skip cleanly (exit 0, message) when `codeBlocks/.github/` is absent. |
-| 5 | Transform location | Keep `init-web/9-*`; revisit at the CakePHP 5.x upgrade. See "Where Build Scripts Live". |
+| 5 | Transform location | Keep `init-web/4.x/9-*`; revisit at the CakePHP 5.x upgrade. See "Where Build Scripts Live". |
 | 6 | Updating existing projects | Allowed, unrestricted (developer tool). See "Re-running on Existing Projects". |
 | 7 | First promotion | Email queue / cron feature is the pilot run of this workflow. |
 
@@ -510,9 +510,9 @@ All decided 2026-09-24 by the project owner.
 **Intent:** A new SetupCase project can be created from the maintained baseline without AI decisions during the build.
 
 **Surfaces:**
-- `init-web/1-Install.php`, `2-Install-Cake.php`, `2-Install-CodeBlocks.php`
+- `init-web/4.x/1-Install.php`, `2-Install-Cake.php`, `2-Install-CodeBlocks.php`
 - `init-web` schema step
-- `init-web/9-*` transforms
+- `init-web/4.x/9-*` transforms
 - `codeBlocks/cakePHP/4.x/`
 - `sourceFiles/`
 
@@ -548,9 +548,9 @@ All decided 2026-09-24 by the project owner.
 **Surfaces:**
 - Git history on `testFlight`
 - `codeBlocks/drift-report.sh`
-- `init-web/8-Save-CodeBlocks.php`
+- `init-web/4.x/8-Save-CodeBlocks.php`
 - `codeBlocks/cakePHP/4.x/` and its `changeLog.md` / `README.md`
-- `init-web/9-*` transforms
+- `init-web/4.x/9-*` transforms
 - `docs/features/`
 
 ### Scenarios
@@ -589,7 +589,7 @@ All decided 2026-09-24 by the project owner.
 
 **Surfaces:**
 - `install_setupCaseCore_modules.sh`
-- `init-web/1-Install.php`
+- `init-web/4.x/1-Install.php`
 
 ### Scenarios
 

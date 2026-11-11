@@ -1,6 +1,6 @@
 <?php
 
-$applicationFile = dirname(__DIR__) . '/sourceFiles/src/Application.php';
+$applicationFile = dirname(__DIR__, 2) . '/sourceFiles/src/Application.php';
 
 if (!file_exists($applicationFile)) {
     echo "ERROR - Application.php not found";

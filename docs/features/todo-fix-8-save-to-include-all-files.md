@@ -8,7 +8,7 @@ Parent workflow: `docs/features/SetupCase-Core-Platform-Build-and-CodeBlocks-Wor
 
 ## Purpose
 
-`init-web/8-Save-CodeBlocks.php` copies SetupCase-owned files from `sourceFiles/` back into `codeBlocks/cakePHP/4.x/`. Its list is explicit and maintained by AI during `Update CodeBlocks` (Decision 1). Today 47 files that exist in CodeBlocks have no entry, so edits to them on TestFlight are never copied back by 8-Save.
+`init-web/4.x/8-Save-CodeBlocks.php` copies SetupCase-owned files from `sourceFiles/` back into `codeBlocks/cakePHP/4.x/`. Its list is explicit and maintained by AI during `Update CodeBlocks` (Decision 1). Today 47 files that exist in CodeBlocks have no entry, so edits to them on TestFlight are never copied back by 8-Save.
 
 This matters most for the core foundation - especially RBAC (`RbacMiddleware`, `AccessMiddleware`) and authentication - which must be tracked.
 
@@ -101,7 +101,7 @@ Clutter (candidates for removal from CodeBlocks instead):
 **Intent:** Every file SetupCase owns in CodeBlocks can be copied back from TestFlight by 8-Save, so foundation changes such as RBAC are never silently left behind.
 
 **Surfaces:**
-- `init-web/8-Save-CodeBlocks.php`
+- `init-web/4.x/8-Save-CodeBlocks.php`
 - `codeBlocks/cakePHP/4.x/`
 - drift report (`SAVE-LIST-MISSING`, `SAVE-LIST-DEAD`)
 

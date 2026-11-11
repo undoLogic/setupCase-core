@@ -1,13 +1,13 @@
 <?php
 
-if (file_exists(dirname(__DIR__) . '/sourceFiles/webroot/css/bootstrap.min.css')) {
+if (file_exists(dirname(__DIR__, 2) . '/sourceFiles/webroot/css/bootstrap.min.css')) {
     echo "<br/>Layout already exists — skipping<br/>";
 } else {
 
 
 //////////////////////////////////////////////////////////////////// LAYOUT ///////////////////////
     echo "<h1 style='color: cornflowerblue;'>Setting up Bootstrap Layout</h1>";
-    $base = dirname(__DIR__) . '/sourceFiles/webroot/';
+    $base = dirname(__DIR__, 2) . '/sourceFiles/webroot/';
 
 // Create folders if missing
     $dirs = [

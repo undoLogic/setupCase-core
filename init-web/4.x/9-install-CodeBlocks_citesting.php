@@ -1,6 +1,6 @@
 <?php
 
-$rootDir = dirname(__DIR__);
+$rootDir = dirname(__DIR__, 2);
 $sourceDir = $rootDir . '/codeBlocks/.github';
 $targetDir = $rootDir . '/.github';
 

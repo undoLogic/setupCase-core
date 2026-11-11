@@ -1,12 +1,12 @@
 <?php
 
-$rootDir = dirname(__DIR__);
+$rootDir = dirname(__DIR__, 2);
 $codeBlocksDir = $rootDir . '/codeBlocks/cakePHP/4.x/.';
 $sourceFilesDir = $rootDir . '/sourceFiles/.';
 
 if (!is_dir($rootDir . '/sourceFiles')) {
     echo "<h1 style='color: #b00020;'>sourceFiles does not exist</h1>";
-    echo "Run init-web/1-Install-Cake.php first.<br/>";
+    echo "Run init-web/4.x/1-Install.php first.<br/>";
     exit(1);
 }
 

@@ -1,6 +1,6 @@
 <?php
 
-$routesFile = dirname(__DIR__) . '/sourceFiles/config/routes.php';
+$routesFile = dirname(__DIR__, 2) . '/sourceFiles/config/routes.php';
 
 if (!file_exists($routesFile)) {
     echo "ERROR - routes.php not found";

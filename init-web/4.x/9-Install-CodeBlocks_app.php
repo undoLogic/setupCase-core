@@ -17,7 +17,7 @@
 
  */
 
-$appConfigFile = dirname(__DIR__) . '/sourceFiles/config/app.php';
+$appConfigFile = dirname(__DIR__, 2) . '/sourceFiles/config/app.php';
 
 if (!file_exists($appConfigFile)) {
     echo "ERROR - app.php not found";

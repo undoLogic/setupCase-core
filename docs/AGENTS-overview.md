@@ -35,7 +35,7 @@ sourceFiles/          generated app (testFlight branch only)
 - Version folder means tested on CakePHP 4.x. A future `5.x/` sits beside it as a sibling, not as an edit.
 - `README.md` and `changeLog.md` are not synced.
 
-**init-web/ build steps** (start at `localhost/init-web/1-Install.php`)
+**init-web/ build steps** (start at `localhost/init-web/4.x/1-Install.php`)
 
 | Step | Script | Does |
 | --- | --- | --- |

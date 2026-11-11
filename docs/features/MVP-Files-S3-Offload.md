@@ -305,11 +305,11 @@ The block's own page is the working feature **and** its code blocks, like the ot
 ## Wiring
 
 - `config/cron.php`: the `files_push` job.
-- Menu: **Files S3 Offload** under **Blocks with DB**, after Email Queues (in `AppController::setupMenu()` and `init-web/9-Install-CodeBlocks_appController.php`).
+- Menu: **Files S3 Offload** under **Blocks with DB**, after Email Queues (in `AppController::setupMenu()` and `init-web/4.x/9-Install-CodeBlocks_appController.php`).
 - `.gitignore`: `/dockerLinux/private/`.
 - `dockerLinux/ini/php.ini`: `FILES_LOCAL_PATH` for Docker.
 - `composer.json`: `aws/aws-sdk-php`, the `pre-autoload-dump` trim script and `extra.aws/aws-sdk-php: ["S3"]`.
-- `init-web/8-Save-CodeBlocks.php`: sync entries for the SQL, Table, Entity, Controller, template, CSS, JS, loading GIF and icons.
+- `init-web/4.x/8-Save-CodeBlocks.php`: sync entries for the SQL, Table, Entity, Controller, template, CSS, JS, loading GIF and icons.
 - No route changes: the prefix fallback routes reach `Staff/Files`.
 
 ## Known limitations
@@ -336,7 +336,7 @@ The block's own page is the working feature **and** its code blocks, like the ot
 - `sourceFiles/webroot/css/files-s3-offload.css`: placeholder box and the loaded / failed states, selectors prefixed `.files-s3-offload-*`
 - `sourceFiles/webroot/img/files-s3-offload-loading.gif`: the animated placeholder (generated; replaceable)
 - `sourceFiles/webroot/img/files-s3-offload/thumb-*.jpg`: `csv`, `xlsx`, `docx`, `pdf`, `zip`, `video`, `image`, `file` (generated; replaceable)
-- `dockerLinux/ini/php.ini`, `.gitignore`, `init-web/8-Save-CodeBlocks.php`, `init-web/9-Install-CodeBlocks_appController.php`, `sourceFiles/src/Controller/AppController.php` (menu)
+- `dockerLinux/ini/php.ini`, `.gitignore`, `init-web/4.x/8-Save-CodeBlocks.php`, `init-web/4.x/9-Install-CodeBlocks_appController.php`, `sourceFiles/src/Controller/AppController.php` (menu)
 
 ## Build checklist
 

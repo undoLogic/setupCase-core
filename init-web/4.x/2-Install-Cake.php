@@ -2,7 +2,7 @@
 
 ini_set('max_execution_time', 300);
 
-$rootDir = dirname(__DIR__);
+$rootDir = dirname(__DIR__, 2);
 $sourceFilesDir = $rootDir . '/sourceFiles';
 
 if (is_dir($sourceFilesDir)) {

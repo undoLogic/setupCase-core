@@ -142,7 +142,7 @@ Confirm that the local SetupCase project loads successfully.
 Navigate to:
 
 ```text
-http://localhost/init-web
+http://localhost/init-web/4.x
 ```
 
 Run:
@@ -379,13 +379,13 @@ For SetupCase Core maintainers only. This is the checklist. The full rules, reas
 Tell the AI coding tool: **`Update CodeBlocks`**.
 
 - Starting point: the latest `Source commit` in `codeBlocks/cakePHP/4.x/changeLog.md`. Everything in `git log <source-commit>..HEAD -- sourceFiles/` is reviewed.
-- The AI classifies every changed file as **sync** (copy into `codeBlocks/cakePHP/4.x/`), **transform** (an `init-web/9-*` script), **schema** (dated SQL), or **exclude** (project-specific, with the reason).
-- It updates `init-web/8-Save-CodeBlocks.php`, adds a changelog entry with the new `Source commit`, and reports what was promoted and what was excluded.
+- The AI classifies every changed file as **sync** (copy into `codeBlocks/cakePHP/4.x/`), **transform** (an `init-web/4.x/9-*` script), **schema** (dated SQL), or **exclude** (project-specific, with the reason).
+- It updates `init-web/4.x/8-Save-CodeBlocks.php`, adds a changelog entry with the new `Source commit`, and reports what was promoted and what was excluded.
 - The AI never stages or commits. Review its changes yourself.
 
 ### 3. Rebuild Check
 
-A promotion is only proven when a fresh build reproduces it. The AI copies `codeBlocks/`, `init-web/` and `AGENTS.md` into a temporary `.rebuild-check/` folder, runs `php init-web/1-Install.php` there inside the container as `www-data`, compares the result with the real `sourceFiles/`, then deletes the folder.
+A promotion is only proven when a fresh build reproduces it. The AI copies `codeBlocks/`, `init-web/` and `AGENTS.md` into a temporary `.rebuild-check/` folder, runs `php init-web/4.x/1-Install.php` there inside the container as `www-data`, compares the result with the real `sourceFiles/`, then deletes the folder.
 
 Every promoted change must reappear. If one does not, it only ever lived in `testFlight` and would be lost. Fix CodeBlocks before going on.
 

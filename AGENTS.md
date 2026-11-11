@@ -13,6 +13,25 @@ Repository-specific instructions for development, code reviews, refactoring, and
 
 ---
 
+# Directory Map
+
+Know which folder a change belongs in before editing.
+
+```text
+codeBlocks/<framework>/<version>/   reusable baseline, copied into sourceFiles/ by the build
+                                    (e.g. codeBlocks/cakePHP/4.x/; 5.x/ is a sibling, never an edit of 4.x/)
+init-web/<version>/                 build scripts for that version (e.g. init-web/4.x/1-Install.php)
+sourceFiles/                        the generated app; only one version is built at a time
+docs/features/                      feature files (source of truth for behaviour)
+```
+
+- A change to the app goes in `sourceFiles/`. A change meant for every future project is promoted into `codeBlocks/` through "Update CodeBlocks".
+- A change to framework files the build edits (routes, `Application.php`, `AppController`, `config/app.php`) belongs in an `init-web/<version>/9-*` transform.
+- Keep each version's scripts and code independent. Never share code between versions.
+- Full workflow: `docs/features/SetupCase-Core-Platform-Build-and-CodeBlocks-Workflow.md`. CakePHP 5 plan: `docs/features/CakePHP-5-Upgrade-Plan.md`.
+
+---
+
 # SetupCase Shared Code Block References
 
 These references are considered canonical implementation examples and reusable architectural foundations.

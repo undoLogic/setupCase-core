@@ -1,6 +1,6 @@
 <?php
 
-$appControllerFile = dirname(__DIR__) . '/sourceFiles/src/Controller/AppController.php';
+$appControllerFile = dirname(__DIR__, 2) . '/sourceFiles/src/Controller/AppController.php';
 
 if (!file_exists($appControllerFile)) {
     echo "ERROR - AppController.php not found";

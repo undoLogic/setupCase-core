@@ -153,7 +153,7 @@ Everything lives in one controller, `App\Controller\StatusController` (decided 2
 
 A **Status Endpoint** entry in the Blocks menu (`/en/code-blocks/status-endpoint`) is the full setup guide. It is written so a developer or an AI assistant on another project can build the feature from the page alone.
 
-- Menu: after `Unified Cron Framework` in the Blocks group of `AppController::setupMenu()` and the `init-web/9-Install-CodeBlocks_appController.php` transform.
+- Menu: after `Unified Cron Framework` in the Blocks group of `AppController::setupMenu()` and the `init-web/4.x/9-Install-CodeBlocks_appController.php` transform.
 - `CodeBlocksController::statusEndpoint()`: title, subtitle, example URLs built in the controller (passive view), and `codeBlocks_renderFiles` showing the controller, service, template, monitor element, JS and CSS straight from the source.
 - **Build it on a project** section: files to copy, "no host config / route / table / Composer package, do not extend `AppController`", how to tune the ignore list, and a short verify list.
 - `templates/CodeBlocks/status_endpoint.php` renders only the element `2026/codeBlocks/status_endpoint`.
@@ -201,8 +201,8 @@ Add a short **Status endpoint** section:
 
 - `sourceFiles/src/Controller/StatusController.php`
 - `sourceFiles/templates/Status/index.php`
-- `init-web/8-Save-CodeBlocks.php` (new synced files)
-- `sourceFiles/src/Controller/AppController.php` (`setupMenu()`) and `init-web/9-Install-CodeBlocks_appController.php`
+- `init-web/4.x/8-Save-CodeBlocks.php` (new synced files)
+- `sourceFiles/src/Controller/AppController.php` (`setupMenu()`) and `init-web/4.x/9-Install-CodeBlocks_appController.php`
 - `sourceFiles/src/Controller/CodeBlocksController.php` (`statusEndpoint()`)
 - `sourceFiles/templates/CodeBlocks/status_endpoint.php`
 - `sourceFiles/templates/element/2026/codeBlocks/status_endpoint.php`

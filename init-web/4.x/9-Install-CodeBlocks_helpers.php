@@ -1,6 +1,6 @@
 <?php
 
-$appViewFile = dirname(__DIR__) . '/sourceFiles/src/View/AppView.php';
+$appViewFile = dirname(__DIR__, 2) . '/sourceFiles/src/View/AppView.php';
 
 if (!file_exists($appViewFile)) {
     echo "ERROR - AppView.php not found";

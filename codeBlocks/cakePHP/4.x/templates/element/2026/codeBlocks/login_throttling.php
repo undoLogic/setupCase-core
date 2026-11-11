@@ -96,7 +96,7 @@
     <li class="mb-2">Run the schema SQL below on each environment (there is no automatic schema step yet).</li>
     <li class="mb-2">
         New projects get the files and the <code>Application.php</code> change from the CodeBlocks build.
-        On an existing project, re-run <code>init-web/9-Install-CodeBlocks_application.php</code>.
+        On an existing project, re-run <code>init-web/4.x/9-Install-CodeBlocks_application.php</code>.
     </li>
     <li class="mb-2">Set <code>TRUSTED_PROXIES</code> only if the app is behind a proxy or CDN.</li>
 </ol>
