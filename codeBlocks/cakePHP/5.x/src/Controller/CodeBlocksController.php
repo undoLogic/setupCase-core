@@ -57,7 +57,6 @@ class CodeBlocksController extends AppController
             'Visual INDEX template (Staff access)' => APP . '../templates/Staff/CodeBlocks/index.php',
             'Visual VIEW template (Staff access)' => APP . '../templates/Staff/CodeBlocks/view.php',
             'Visual EDIT template (Manager access)' => APP . '../templates/Manager/CodeBlocks/edit.php',
-            'Visual DOWNLOAD CSV template (Staff access)' => APP . '../templates/Staff/CodeBlocks/download_csv.php',
         ]);
         $this->set('codeBlocks_renderVar', [
             'Controller INDEX action (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlocksController::class, 'index'),

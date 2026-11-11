@@ -17,7 +17,7 @@ The goal of this work is **not** a full migration. The goal is a proven CakePHP 
 - **Fully independent scripts:** `4.x` and `5.x` share no code, so `4.x` can later be deprecated and deleted outright. The 5.x rebuild is also a chance to clean up.
 - **Authentication plugin 4.x:** use `cakephp/authentication` 4.x, not 3.x, so it won't need upgrading again later. Checked in the 2.11.3, 3.3.7 and 4.2.1 source code (2026-11-11):
     - **Shared database is safe.** All three hash with `password_hash()` / `PASSWORD_DEFAULT` (bcrypt) and check with `password_verify()`. A password saved by the 4.x app logs in on the 5.x app and the other way round.
-    - **Remember-me tokens** use the same format in 3.x and 4.x. Each app still needs its own cookie name while both run side by side.
+    - **Remember-me tokens changed (corrected 2026-11-11).** Authentication 4.2 issues a new HMAC token format. It still accepts the old 2-part tokens from the 4.x app while `legacyTokens` is on (the default) and upgrades them at the next login, provided both apps use the same `Security.salt`. The 4.x app cannot read the new tokens. An earlier note here said the formats were the same; that check compared a function that 4.2 had renamed.
     - **The one real change:** `AuthenticationService::loadIdentifier()` (used by the 4.x app) is removed in 4.x (deprecated since 3.3). The identifier is passed to each authenticator instead.
 - **One build at a time:** both versions build into the same `sourceFiles/`. Core only ever builds one version at a time. Running several versions side by side is advanced work done in CUSTOMER projects, not part of core.
 
@@ -77,11 +77,26 @@ sourceFiles/        generated app (one version at a time)
 - Restore the parts Step 1 left out: login/logout and prefix routes, `rbac` in `app.php`, EncryptedCookie/Authentication/Rbac/Access middleware, the Authentication component, `getUserId()`, the RBAC redirect in `setupCase()`, the Auth helper and the login link in the sub-menu.
 - Install `cakephp/authentication` 4.x (see Decisions), pinned to the minor version that passes this step.
 - Before porting `getAuthenticationService()`, read both official upgrade guides: [2.x to 3.x](https://book.cakephp.org/authentication/3/en/upgrade-2-to-3.html) and the 3.x to 4.x guide (not included in the package source).
-- Pass the Password identifier to each authenticator (Form, Cookie, and `ThrottledFormAuthenticator`) instead of calling `loadIdentifier()` on the service.
+- Pass the Password identifier to each authenticator (Form and Cookie) instead of calling `loadIdentifier()` on the service. `ThrottledFormAuthenticator` comes with failed-login blocking (Later).
+
+**Done 2026-11-11.** Built with authentication 4.2.1 (`~4.2.0`). What was learned and changed vs 4.x:
+
+- **Prefix access is enforced in `AccessMiddleware`.** It returns the redirect itself (login page if logged out, home with "Requires X access" if the role lacks the prefix), so no controller code runs. The Authentication component is loaded with `requireIdentity => false`; prefix RBAC is the only gate.
+- **Why in middleware:** CakePHP only stops an action when `beforeFilter()` returns the redirect response, so refusing in middleware is the reliable place.
+- **Login URLs:** one per allowed language (`/en/login`, ...) without the base folder, checked with `'urlChecker' => 'Authentication.Multi'`. The 4.x style (base folder in the URL) would be doubled by the 4.x `DefaultUrlChecker`.
+- **Login redirect** uses `getLoginRedirect()`, which only accepts local URLs.
+- **Logout** stays GET (owner decision). AGENTS.md "HTTP Method by Effect" does not list it as an exception yet.
+- **Not ported:** `EncryptedCookieMiddleware`.
+- **No public signup (decided 2026-11-11).** 4.x `UsersController::add()` / `addUser()` are not ported. Users are created on the server with `bin/cake users add <email> <ADMIN|MANAGER|STAFF>`, which calls `UsersTable::addUser()`. The password is asked for without echo (or generated and shown once), never passed on the command line. The role must be a key of config `rbac`, the email must be unique, and the password at least 12 characters.
+- **Not ported yet:** password reset (`beginReset`, `reset`).
+- **Application Foundation with database** ("Blocks with DB" menu) ported the same day: Staff index/create/view/duplicate, Manager edit/delete. Delete and duplicate are POST only. A router URL filter keeps the language on every array URL; without it, delete buttons posted to a URL without a language, LangMiddleware redirected, and the browser re-sent it as GET (405). `AuditLog` and the CSV/PDF downloads are not ported.
+- New in `codeBlocks/cakePHP/5.x/`: `UsersController` (login/logout), `UsersTable`, `User` entity (password and reset token hidden, only `email` mass-assignable), `RbacMiddleware`, `AccessMiddleware`, `AuthHelper`, login template.
 
 ### Later
 
-- Failed-login blocking (brute-force protection).
+- Failed-login blocking (brute-force protection), with `ThrottledFormAuthenticator`.
+- `AuditLog` behavior, CSV/PDF downloads.
+- Password reset.
 - All other features, pulled in as CUSTOMER work needs them.
 
 ## Verification pattern
@@ -149,11 +164,21 @@ The same idea applies: don't upgrade in place.
 **Intent:** Login, RBAC and Access work with prefixes on 5.x.
 **Surfaces:** login, `RbacMiddleware`, Access middleware, prefixed routes
 
-- [ ] A user can log in and log out
-- [ ] A user created by the 4.x app logs in on the 5.x app with the same password (shared database)
-- [ ] A password changed on the 5.x app still logs in on the 4.x app
-- [ ] Each role reaches only its allowed prefixes
-- [ ] A logged-out user is redirected away from protected prefixes
+- [x] A user can log in and log out (2026-11-11, curl through the real form with CSRF token)
+- [x] A wrong password shows "Email or password is incorrect."
+- [ ] A user created by the 4.x app logs in on the 5.x app with the same password (shared database). Not run: the only 4.x user's password is unknown. Same hasher code verified in source.
+- [ ] A password changed on the 5.x app still logs in on the 4.x app. Not run: needs a 4.x build.
+- [x] Each role reaches only its allowed prefixes (STAFF refused on Manager/Admin, MANAGER refused on Admin)
+- [x] A refused request never reaches the controller (STAFF POST to a Manager delete is redirected by AccessMiddleware)
+- [x] A logged-out user is redirected to the login page, and back to the page they asked for after logging in
+- [x] An external `?redirect=` URL is ignored after login
+- [x] Remember me logs the user back in on a new session
+- [x] Application Foundation with database: STAFF can list, view and create; MANAGER can edit and delete; STAFF is refused on edit
+- [x] Delete and duplicate refuse GET (405); a delete button removes the row
+- [x] Edit ignores a non-local `cameFrom`
+- [x] There is no public signup URL (`/en/users/add` returns 404)
+- [x] `bin/cake users add` creates a user who can then log in (generated and typed password)
+- [x] `bin/cake users add` refuses a duplicate email, an invalid email, an unknown role and a password under 12 characters
 
 ## Open questions
 

@@ -1,7 +1,7 @@
 <?php
 
-// CakePHP 5.x config/app.php. Step 1: allowedLanguages only.
-// Step 2 adds the 'rbac' role => prefix map.
+// CakePHP 5.x config/app.php: allowedLanguages and the 'rbac' role => prefix map.
+// Prefix access is all-or-nothing per prefix (see AGENTS.md).
 
 $appConfigFile = dirname(__DIR__, 2) . '/sourceFiles/config/app.php';
 
@@ -19,8 +19,8 @@ if ($contents === false) {
 
 $contents = str_replace(["\r\n", "\r"], "\n", $contents);
 
-if (strpos($contents, "'allowedLanguages' => [") !== false) {
-    echo "app.php language config already exists — skipping<br/>";
+if (strpos($contents, "'allowedLanguages' => [") !== false && strpos($contents, "'rbac' => [") !== false) {
+    echo "app.php language/rbac config already exists — skipping<br/>";
     return;
 }
 
@@ -30,6 +30,11 @@ $insert = <<<'PHP'
         'en',
         //'fr',
         //'es'
+    ],
+    'rbac' => [
+        'ADMIN' => ['Admin' => [], 'Staff' => [], 'Manager' => []],
+        'MANAGER' => ['Staff' => [], 'Manager' => []],
+        'STAFF' => ['Staff' => []],
     ],
 
 PHP;
@@ -44,4 +49,4 @@ if ($count !== 1) {
 
 file_put_contents($appConfigFile, $contents);
 
-echo "app.php language config added successfully<br/><br/>";
+echo "app.php language/rbac config added successfully<br/><br/>";

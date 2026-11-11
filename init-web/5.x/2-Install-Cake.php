@@ -58,7 +58,12 @@ runInstallCommand(
     'composer require "cakephp/cakephp:~5.4.0" -W -d ' . escapeshellarg($sourceFilesDir)
 );
 
-// Authentication is added in Step 2 (see docs/features/CakePHP-5-Upgrade-Plan.md)
+// Authentication 4.x (not 3.x): same bcrypt password hashes as the 4.x app, so a
+// shared database keeps working. See docs/features/CakePHP-5-Upgrade-Plan.md
+runInstallCommand(
+    'Installing authentication 4.2',
+    'composer require "cakephp/authentication:~4.2.0" -d ' . escapeshellarg($sourceFilesDir)
+);
 
 echo "<br/><strong style='color:green;'>Install complete.</strong><br/>";
 ?>

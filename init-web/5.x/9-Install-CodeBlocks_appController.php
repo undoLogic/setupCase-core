@@ -1,9 +1,11 @@
 <?php
 
-// CakePHP 5.x AppController wiring.
-// Step 1: setupCase() (temp password + SSL + view vars), the menu and writeToLog().
-// Step 2 adds the Authentication component, getUserId() and the RBAC/Access
-// redirect inside setupCase().
+// CakePHP 5.x AppController wiring: Authentication component, setupCase()
+// (temp password + SSL + view vars), the menu, getUserId() and writeToLog().
+//
+// Prefix access is NOT checked here. AccessMiddleware refuses a request before
+// any controller runs. The component therefore never requires
+// an identity itself: requireIdentity => false.
 // The menu only lists pages that exist in codeBlocks/cakePHP/5.x/.
 
 $appControllerFile = dirname(__DIR__, 2) . '/sourceFiles/src/Controller/AppController.php';
@@ -46,6 +48,31 @@ foreach ($imports as $import) {
     $importInsertPos += strlen($import) + 1;
     $updated = true;
 }
+
+if (strpos($contents, "\$this->loadComponent('Authentication.Authentication'") === false) {
+    $anchor = "\$this->loadComponent('Flash');\n";
+    $component = "        \$this->loadComponent('Authentication.Authentication', ['requireIdentity' => false]);\n";
+    $contents = str_replace($anchor, $anchor . $component, $contents, $count);
+    if ($count !== 1) {
+        echo "ERROR - initialize anchor not found";
+        exit(1);
+    }
+    $updated = true;
+}
+
+$getUserIdBlock = <<<'PHP'
+
+    public function getUserId()
+    {
+        $identity = $this->request->getAttribute('identity');
+        if ($identity !== null && $identity->get('id') !== null) {
+            return $identity->get('id');
+        }
+
+        return false;
+    }
+
+PHP;
 
 $beforeFilterBlock = <<<'PHP'
 
@@ -98,6 +125,19 @@ $setupMenuBlock = <<<'PHP'
                             'prefix' => false,
                             'controller' => 'CodeBlocks',
                             'action' => 'applicationFoundation',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'Blocks with DB',
+                'children' => [
+                    [
+                        'name' => 'Application Foundation',
+                        'link' => [
+                            'prefix' => 'Staff',
+                            'controller' => 'CodeBlocks',
+                            'action' => 'index',
                         ],
                     ],
                 ],
@@ -189,6 +229,7 @@ $insertBeforeClassEnd = static function (string $input, string $block, int &$cou
 
 $blocks = [
     'public function beforeFilter(EventInterface $event)' => $beforeFilterBlock,
+    'public function getUserId(' => $getUserIdBlock,
     'public function setupCase(' => $setupCaseBlock,
     'private function setupMenu()' => $setupMenuBlock,
     'public function writeToLog(' => $writeToLogBlock,

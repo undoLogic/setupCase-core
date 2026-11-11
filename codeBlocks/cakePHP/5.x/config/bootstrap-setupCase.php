@@ -11,6 +11,8 @@ declare(strict_types=1);
  */
 
 use Cake\Core\Configure;
+use Cake\Http\ServerRequest;
+use Cake\Routing\Router;
 
 //@todo Change your domains for your project here
 $liveDomains = [
@@ -44,3 +46,19 @@ switch ($current_env_profile) {
 
 // Configure the environment setting.
 Configure::write('App.current_env_profile', $current_env_profile);
+
+// Every array URL (links, postLink/form actions, controller redirects) keeps the
+// current language, so it matches a /{language}/ route. Without this LangMiddleware
+// has to redirect, and a redirected POST arrives as a GET (e.g. delete fails with 405).
+Router::addUrlFilter(function (array $params, ?ServerRequest $request): array {
+    if ($request === null || isset($params['language']) || !empty($params['plugin'])) {
+        return $params;
+    }
+
+    $lang = $request->getAttribute('lang') ?? $request->getParam('language');
+    if ($lang) {
+        $params['language'] = $lang;
+    }
+
+    return $params;
+});

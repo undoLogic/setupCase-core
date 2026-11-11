@@ -37,9 +37,9 @@ echo "<br/>";
 include_once(__DIR__ . '/9-Install-CodeBlocks_layout.php');
 include_once(__DIR__ . '/9-Install-CodeBlocks_routes.php');
 include_once(__DIR__ . '/9-Install-CodeBlocks_bootstrap.php');
+include_once(__DIR__ . '/9-Install-CodeBlocks_application.php');
 include_once(__DIR__ . '/9-Install-CodeBlocks_middleware.php');
 include_once(__DIR__ . '/9-Install-CodeBlocks_appController.php');
 include_once(__DIR__ . '/9-Install-CodeBlocks_helpers.php');
 include_once(__DIR__ . '/9-Install-CodeBlocks_app.php');
-// Step 2 adds: 9-Install-CodeBlocks_application.php (authentication service)
 // CI setup (citesting) is not ported yet: codeBlocks/.github does not exist

@@ -31,6 +31,14 @@
 
 
 
+    <li>
+        <?php if ($this->Auth->isLoggedIn()): ?>
+            LOGGED IN (<?= $this->Html->link('Logout', ['prefix' => false, 'controller' => 'Users', 'action' => 'logout']); ?>)
+        <?php else: ?>
+            NOT logged in (<?= $this->Html->link('Login', ['prefix' => false, 'controller' => 'Users', 'action' => 'login']); ?>)
+        <?php endif; ?>
+    </li>
+
     <li class="nav-item">
         <a class="nav-link" target="_blank" href="https://www.setupcase.com/">SetupCase.com</a>
     </li>
