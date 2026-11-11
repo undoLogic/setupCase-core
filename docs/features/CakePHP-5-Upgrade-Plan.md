@@ -11,6 +11,7 @@ The goal of this work is **not** a full migration. The goal is a proven CakePHP 
 ## Decisions
 
 - **Target:** latest CakePHP 5.4.x on **PHP 8.3**. 8.3 is already proven on CakePHP 4.6 in production, and we are not going higher for now.
+- **Locked to 5.4.x:** the 5.x build installs with `cakephp/app:~5.4.0`, so it picks up 5.4 patches but never jumps to 5.5 on its own. Moving to 5.5 is a deliberate change to the build script.
 - **codeBlocks:** add a new sibling folder `codeBlocks/cakePHP/5.x/`. `4.x/` is not edited. Features are ported into `5.x/` one at a time, not copied in bulk.
 - **init-web:** split into `init-web/4.x/` (the existing scripts, which keep working) and `init-web/5.x/` (builds the new version).
 - **Fully independent scripts:** `4.x` and `5.x` share no code, so `4.x` can later be deprecated and deleted outright. The 5.x rebuild is also a chance to clean up.
@@ -34,13 +35,23 @@ sourceFiles/        generated app (one version at a time)
 ### Step 0 - Move init-web into 4.x
 
 - Move the current scripts into `init-web/4.x/` with `git mv` so history is kept.
-- Fix the relative paths to `codeBlocks/cakePHP/4.x/` and `sourceFiles/`, since the scripts now sit one folder deeper.
-- The entry point becomes `localhost/init-web/4.x/1-Install.php`. Update the README and any links.
+- Fix the paths, since the scripts now sit one folder deeper:
+    - Every `dirname(__DIR__)` becomes `dirname(__DIR__, 2)` (`2-Install-Cake.php`, `2-Install-CodeBlocks.php`, `8-Save-CodeBlocks.php` and the `9-*` transforms).
+    - `3-View-CodeBlocks.php` builds its redirect from `SCRIPT_NAME`, so it needs one more level up to reach `/sourceFiles/CodeBlocks`.
+    - `__DIR__` includes between scripts in the same folder keep working as they are.
+- The entry point becomes `localhost/init-web/4.x/1-Install.php`. Update every reference:
+    - `README.md`: the install URL, the "Update CodeBlocks" steps and the rebuild check command.
+    - Feature docs that name `init-web/8-*` or `9-*` scripts (build workflow, MVP Status Endpoint, MVP Files S3 Offload, todo-fix-8-save, CI pipeline testing).
+    - The demo text in `codeBlocks/cakePHP/4.x/templates/element/2026/codeBlocks/login_throttling.php`.
+    - Old entries in `changeLog.md` stay as written (they record history).
+    - `install_setupCaseCore_modules.sh` and `import_from_testflight.sh` copy the whole `init-web` folder, so they need no change.
+- Add a short directory map to AGENTS.md: what `codeBlocks/<framework>/<version>/`, `init-web/<version>/` and `sourceFiles/` are for, and a link to this plan and the build workflow doc. This tells an AI which folder a change belongs in.
 - Prove it with a full rebuild (see Verification pattern).
 
 ### Step 1 - CakePHP 5 loads
 
 - Create `init-web/5.x/` and `codeBlocks/cakePHP/5.x/`.
+- `init-web/5.x/2-Install-Cake.php` installs `cakephp/app:~5.4.0` (see Decisions).
 - Bring over only the basic layout and the Application Foundation demo page (the one with no database).
 - Expect the `9-*` transforms to fail at first. The CakePHP 5 skeleton has different anchors in `Application.php`, the routes and `AppController`. Each failure shows exactly what to port next.
 - Done when the foundation page loads and you can click around it.
@@ -101,6 +112,8 @@ The same idea applies: don't upgrade in place.
 - [ ] `init-web/4.x/1-Install.php` runs to the end with no failures
 - [ ] A rebuild diffed against the previous `sourceFiles/` shows no unexpected differences
 - [ ] README links point to the new entry point
+- [ ] `3-View-CodeBlocks.php` opens `/sourceFiles/CodeBlocks` from its new location
+- [ ] AGENTS.md has the directory map
 
 ### CakePHP 5 foundation
 
@@ -108,6 +121,7 @@ The same idea applies: don't upgrade in place.
 **Surfaces:** `init-web/5.x/`, `codeBlocks/cakePHP/5.x/`
 
 - [ ] `init-web/5.x/` builds CakePHP 5.4.x on PHP 8.3
+- [ ] Two builds on different days both stay on 5.4.x
 - [ ] The foundation demo page loads with the basic layout
 - [ ] No errors in `logs/`
 
@@ -122,5 +136,7 @@ The same idea applies: don't upgrade in place.
 
 ## Open questions
 
-- YES LOCK TO 5.4.X [ ] Pin Composer to `^5.4` in the 5.x build so builds stop drifting?
-- YES GOOD CALL [ ] Add a short directory map (`codeBlocks/`, `init-web/`, `sourceFiles/`) to AGENTS.md now that both have version folders?
+None. Both earlier questions are answered and moved into the plan:
+
+- Lock to 5.4.x: see Decisions and Step 1. Uses `~5.4.0`, not `^5.4`, because `^5.4` would also allow 5.5.
+- Directory map in AGENTS.md: see Step 0.
