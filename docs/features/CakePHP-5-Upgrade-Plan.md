@@ -11,10 +11,14 @@ The goal of this work is **not** a full migration. The goal is a proven CakePHP 
 ## Decisions
 
 - **Target:** latest CakePHP 5.4.x on **PHP 8.3**. 8.3 is already proven on CakePHP 4.6 in production, and we are not going higher for now.
-- **Locked to 5.4.x:** the 5.x build installs with `cakephp/app:~5.4.0`, so it picks up 5.4 patches but never jumps to 5.5 on its own. Moving to 5.5 is a deliberate change to the build script.
+- **Locked to 5.4.x:** the 5.x build installs with `cakephp/app:~5.4.0` and then `cakephp/cakephp:~5.4.0` (the skeleton pin alone does not lock the framework), so it picks up 5.4 patches but never jumps to 5.5 on its own. Moving to 5.5 is a deliberate change to the build script.
 - **codeBlocks:** add a new sibling folder `codeBlocks/cakePHP/5.x/`. `4.x/` is not edited. Features are ported into `5.x/` one at a time, not copied in bulk.
 - **init-web:** split into `init-web/4.x/` (the existing scripts, which keep working) and `init-web/5.x/` (builds the new version).
 - **Fully independent scripts:** `4.x` and `5.x` share no code, so `4.x` can later be deprecated and deleted outright. The 5.x rebuild is also a chance to clean up.
+- **Authentication plugin 4.x:** use `cakephp/authentication` 4.x, not 3.x, so it won't need upgrading again later. Checked in the 2.11.3, 3.3.7 and 4.2.1 source code (2026-11-11):
+    - **Shared database is safe.** All three hash with `password_hash()` / `PASSWORD_DEFAULT` (bcrypt) and check with `password_verify()`. A password saved by the 4.x app logs in on the 5.x app and the other way round.
+    - **Remember-me tokens** use the same format in 3.x and 4.x. Each app still needs its own cookie name while both run side by side.
+    - **The one real change:** `AuthenticationService::loadIdentifier()` (used by the 4.x app) is removed in 4.x (deprecated since 3.3). The identifier is passed to each authenticator instead.
 - **One build at a time:** both versions build into the same `sourceFiles/`. Core only ever builds one version at a time. Running several versions side by side is advanced work done in CUSTOMER projects, not part of core.
 
 ## Target structure
@@ -51,16 +55,29 @@ sourceFiles/        generated app (one version at a time)
 ### Step 1 - CakePHP 5 loads
 
 - Create `init-web/5.x/` and `codeBlocks/cakePHP/5.x/`.
-- `init-web/5.x/2-Install-Cake.php` installs `cakephp/app:~5.4.0` (see Decisions).
+- `init-web/5.x/2-Install-Cake.php` installs `cakephp/app:~5.4.0` and locks `cakephp/cakephp:~5.4.0` (see Decisions).
 - Bring over only the basic layout and the Application Foundation demo page (the one with no database).
 - Expect the `9-*` transforms to fail at first. The CakePHP 5 skeleton has different anchors in `Application.php`, the routes and `AppController`. Each failure shows exactly what to port next.
 - Done when the foundation page loads and you can click around it.
+
+**Done 2026-11-11.** What was learned:
+
+- `cakephp/app:~5.4.0` only locks the skeleton. The framework is locked separately with `composer require cakephp/cakephp:~5.4.0`, otherwise it could drift to 5.5. The build resolved CakePHP 5.4.4.
+- All 4.x transform anchors still exist in the 5.4 skeleton. The transforms were rewritten as independent 5.x copies that only add what Step 1 needs.
+- The Application Foundation page needs no database, but it shows the source of the Staff/Manager `CodeBlocksController`, so those classes and templates are in `codeBlocks/cakePHP/5.x/`. No prefix routes exist yet, so they return 404 by URL until Step 2 adds prefixes and RBAC.
+- CakePHP 5 fixes needed: typed `$_defaultConfig` in helpers, typed `HtmlHelper::link()` signature, and log `'scopes' => null` instead of `false`.
+- `LangMiddleware` redirected plugin URLs to `/en/...`, which broke the DebugKit toolbar. 5.x now lets plugin routes through. 4.x likely has the same problem and was left unchanged.
+- The full list is in `codeBlocks/cakePHP/5.x/changeLog.md`.
+- Not ported yet: a 5.x `8-Save-CodeBlocks.php` (reverse sync). Add it before the first "Update CodeBlocks" on 5.x.
 
 ### Step 2 - Login, RBAC and Access
 
 - Port login, `RbacMiddleware` and the Access middleware.
 - Prefixes must work, because the security rules in AGENTS.md depend on them.
-- CakePHP 5 uses version 3 of the authentication plugin. Read the official [2.x to 3.x upgrade guide](https://book.cakephp.org/authentication/3/en/upgrade-2-to-3.html) before porting the service setup in `Application.php`.
+- Restore the parts Step 1 left out: login/logout and prefix routes, `rbac` in `app.php`, EncryptedCookie/Authentication/Rbac/Access middleware, the Authentication component, `getUserId()`, the RBAC redirect in `setupCase()`, the Auth helper and the login link in the sub-menu.
+- Install `cakephp/authentication` 4.x (see Decisions), pinned to the minor version that passes this step.
+- Before porting `getAuthenticationService()`, read both official upgrade guides: [2.x to 3.x](https://book.cakephp.org/authentication/3/en/upgrade-2-to-3.html) and the 3.x to 4.x guide (not included in the package source).
+- Pass the Password identifier to each authenticator (Form, Cookie, and `ThrottledFormAuthenticator`) instead of calling `loadIdentifier()` on the service.
 
 ### Later
 
@@ -120,10 +137,12 @@ The same idea applies: don't upgrade in place.
 **Intent:** A fresh 5.x build loads the Application Foundation demo.
 **Surfaces:** `init-web/5.x/`, `codeBlocks/cakePHP/5.x/`
 
-- [ ] `init-web/5.x/` builds CakePHP 5.4.x on PHP 8.3
+- [x] `init-web/5.x/` builds CakePHP 5.4.x on PHP 8.3 (2026-11-11: 5.4.4 on PHP 8.3.36)
 - [ ] Two builds on different days both stay on 5.4.x
-- [ ] The foundation demo page loads with the basic layout
-- [ ] No errors in `logs/`
+- [x] The foundation demo page loads with the basic layout
+- [x] No errors in `logs/`
+- [x] Staff/Manager pages are not reachable by URL before Step 2 (404)
+- [x] The DebugKit toolbar loads
 
 ### CakePHP 5 login and access
 
@@ -131,6 +150,8 @@ The same idea applies: don't upgrade in place.
 **Surfaces:** login, `RbacMiddleware`, Access middleware, prefixed routes
 
 - [ ] A user can log in and log out
+- [ ] A user created by the 4.x app logs in on the 5.x app with the same password (shared database)
+- [ ] A password changed on the 5.x app still logs in on the 4.x app
 - [ ] Each role reaches only its allowed prefixes
 - [ ] A logged-out user is redirected away from protected prefixes
 
