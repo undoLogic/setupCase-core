@@ -3,6 +3,16 @@
 ## Purpose
 Repository-specific instructions for development, code reviews, refactoring, and collaboration.
 
+In this file, "the agent" means whatever AI coding tool is working in this repo (a CLI agent, an IDE assistant, or a cloud agent).
+
+## This File Is Synced
+
+AGENTS.md is synced from SetupCase-CORE and gets overwritten on every sync.
+
+- Never edit AGENTS.md inside a project.
+- Project-specific rules go in the project's README, under "Project Rules for Agents" (see "Project README Format").
+- Where the README's project rules and this file differ, the README wins for that project.
+
 ---
 
 # Tech Stack
@@ -50,6 +60,17 @@ These references are considered canonical implementation examples and reusable a
 
 ---
 
+# Installed Modules
+
+Some projects include optional modules (for example UpdateCase). A module documents itself: its rules, workflows, and any exceptions to the core rules in this file live inside the module's own main file, not here.
+
+- Before working on a module's code, or code that calls it, read the module's main file first.
+  - UpdateCase: `sourceFiles/src/Util/UpdateCaseUtil_*.php` (use whichever version is installed).
+- A module may document accepted exceptions to core rules (for example a GET endpoint or a committed low-security key). Treat a documented module exception as intentional. Do not "fix" it back to the core rule.
+- An exception counts only if it is written in the module's own file. Never assume one.
+
+---
+
 # Core Development Philosophy
 
 - Keep changes small, targeted, and task-focused.
@@ -91,10 +112,18 @@ Ownership/tenant scoping is mandatory everywhere it applies, independent of the 
 Prefix RBAC answers who can reach an action, scoping answers which rows it may touch, and the HTTP method answers how a request is allowed to arrive.
 
 - GET is for read-only actions only: lists, detail views, and loading an edit form.
-- Any action that changes state must be POST and must never be reachable by GET. This includes create, update, delete, toggles, reordering, resets, and side effects such as sending mail.
-- This holds regardless of prefix or portal access. Prefixes authorize who can reach an action, not whether the request was intended; browsers, link previews, and scanners follow GET links automatically, so a state change must never ride on a GET.
+- Any new action that changes state must be POST and must never be reachable by GET. This includes create, update, delete, toggles, reordering, resets, and side effects such as sending mail.
+- This holds regardless of prefix or portal access, and logged-in pages are where it matters most. Browsers, link previews, prefetchers, and scanners follow GET links automatically, and the user's own session cookie is what makes those requests succeed.
 - To debug a state-changing action, submit the form once and refresh (the browser re-sends the POST), or call the Table method directly from a console command. Never convert the action to GET for convenience.
-- Exception: the UpdateCase remote sync action (`PagesController::sync()` calling `$this->updateCase->receiveSync()`) stays GET. UpdateCase itself calls it, and `receiveSync()` checks the Referer and only pulls published content into the local cache. See "UpdateCase Client Setup".
+- Exceptions are allowed only where an installed module documents one in its own file (see "Installed Modules").
+
+### Existing GET State Changes
+
+When you find an existing action that changes state on GET:
+
+- Flag it and offer to convert it to POST.
+- Do not convert it during unrelated work unless the user agrees.
+- If the user defers ("later"), add a short note to `docs/todos/` naming the action, then carry on without pushing further.
 
 ## Non-HTTP Entry Points
 
@@ -142,7 +171,7 @@ Additional response data may be included as needed.
 ## Private Helper Functions
 
 - Private functions may return simple values.
-- Public functions should remain under approximately `35` lines whenever possible.
+- Public functions should remain under approximately `35` lines whenever possible. This is a soft target, not a hard block.
 - If a public function becomes too large:
   - split logic into private helper functions
   - keep the public method as an orchestration layer
@@ -207,7 +236,7 @@ Base templates should:
 
 - Keep a short Bootstrap overview structure
 - Show only high-level layout flow
-- Remain under one screen whenever possible
+- Remain under one screen whenever possible (soft target)
 
 Typical structure:
 
@@ -433,76 +462,13 @@ paypalPayerID        not  paypal_payer_id
 
 ---
 
-# Formatting and Cleanup Rules
+# Formatting Rules
 
 - Keep ASCII unless Unicode is already required.
-- Run cleanup/formatting only when no staged changes exist.
-
-Pre-check:
-
-```bash
-git diff --cached --quiet
-```
-
-If staged changes exist:
-
-- do not run broad cleanup
-- keep cleanup isolated in separate commits
-
----
-
-## Formatting Consistency
-
-- Normalize method indentation first
-- Top-level class methods must align consistently
-- Prefer minimal formatting-only changes when the task is formatting-related
-
----
-
-# Pre-Commit Hook Policy
-
-Pre-commit blocks when:
-
-- public PHP methods exceed:
-  - default: `45` lines
-- base templates exceed:
-  - default: `45` lines
-
-Exemptions:
-
-- `private`
-- `protected`
-- template elements under:
-  - `sourceFiles/templates/element/`
-  - `sourceFiles/templates/elements/`
-
----
-
-## Hook Overrides
-
-Override public function limit:
-
-```bash
-PRECOMMIT_PUBLIC_FUNCTION_MAX_LINES=<n>
-```
-
-Override template limit:
-
-```bash
-PRECOMMIT_TEMPLATE_MAX_LINES=<n>
-```
-
-Temporarily disable soft checks:
-
-```bash
-SOFT_PRECOMMIT_DISABLE=1
-```
-
-Skip all hooks:
-
-```bash
-git commit --no-verify
-```
+- Normalize method indentation first.
+- Top-level class methods must align consistently.
+- Prefer minimal formatting-only changes when the task is formatting-related.
+- Broad cleanup is only allowed when nothing is staged (see "Git and Change Hygiene").
 
 ---
 
@@ -721,6 +687,23 @@ If automated testing cannot be completed, leave the human-readable testing scena
 - Leave changes in the working tree so the user can review, stage, and
   commit themselves.
 
+## No Broad Cleanup While Files Are Staged
+
+Staged files mean the user is mid-review. Re-formatting files then mixes
+whitespace noise into real changes, and the next `git add` makes them
+impossible to tell apart in the diff.
+
+Before any broad cleanup or formatting pass, check:
+
+```bash
+git diff --cached --quiet
+```
+
+If staged changes exist:
+
+- do not run broad cleanup
+- wait until the user has committed, or keep cleanup isolated in its own commit
+
 ---
 
 # Review Priorities
@@ -756,395 +739,39 @@ When reviewing code, prioritize:
 
 ---
 
-# Future Project Rules
+# Project README Format
 
-Add additional project-specific rules here over time:
+Every project has a README at the repo root. AGENTS.md is shared and synced; the README is where everything specific to this project lives.
 
-- linters
-- deployment rules
-- CI/CD requirements
-- formatting standards
-- infrastructure constraints
+If no README exists, create one with these sections in this order. Leave sections blank (or with a short placeholder) rather than inventing content. Never guess a project's purpose, cron jobs, or services.
 
----
+```markdown
+Profile: web | software | web + software
+SetupCase standard last checked: YYYY-MM-DD
 
-# UpdateCase Conversion System
+Standard status:
+- [ ] item
 
-## Purpose
+## Overview
+<Two or three lines: who the client is, what the project does, who uses it.>
 
-UpdateCase separates website presentation/programming from editable content.
+## Cron Jobs
+- <what it does> | <how often> | `<command>`
 
-The intended workflow is:
+## External Services
+- <service> | <what it's used for> | config key: `<KEY_NAME>`
 
-1. Build the website normally with realistic temporary/default content.
-2. Run **UpdateCase Convert** in Codex.
-3. Codex identifies editable content and replaces it with UpdateCase PHP calls.
-4. Codex preserves the original clean content in a deterministic Markdown import definition.
-5. Paste or upload that Markdown into UpdateCase.
-6. UpdateCase parses, validates, and shows a complete preview/review screen.
-7. The user confirms the proposed Site, Pages, Locations, Elements, Groups, and content.
-8. Only after confirmation does UpdateCase create the real database records.
-9. Connect/synchronize the website with UpdateCase and verify every field.
-10. Run **UpdateCase Cleanup** to remove temporary fallback/debug content.
-
-The Markdown import format must be deterministic and machine-parseable. Do not rely on AI inside UpdateCase to interpret the import file.
-
----
-
-## UpdateCase Client Setup
-
-When a project has UpdateCase installed:
-
-- The client (`src/Util/UpdateCaseUtil_10.php`) is created once in `AppController::beforeFilter()`, so every controller has `$this->updateCase` and every view has `$updateCase`. Do not create it again in individual actions.
-- The UpdateCase site key (`syncKey`) is low security: it only lets a site pull its own published content. It may be hard-coded in `beforeFilter()` and committed. This is an accepted exception to "no secrets in the repo"; other keys and credentials still follow that rule.
-- The remote sync action (`PagesController::sync()` -> `receiveSync()`) is called by UpdateCase with GET. This is an accepted exception to "HTTP Method by Effect": keep it GET and don't convert it to POST.
-- Keep the cache at `tmp/updateCase/` (outside the webroot) and add `/sourceFiles/tmp/updateCase/` to `.gitignore`. Images and files are streamed through `PagesController::getImage()` / `file()`.
-
----
-
-## Hierarchy
-
-UpdateCase content follows this hierarchy:
-
-```text
-Site
-└── Page
-    ├── Single Location
-    │   └── Element
-    └── Grouped Location
-        └── Group
-            └── Element
-```
-
-- A **Site** is the website being imported, such as `VendorGrid`.
-- A **Page** represents the UpdateCase page used by a website template.
-- A **Single Location** is a non-repeating logical section of editable content.
-- A **Grouped Location** is a repeating structure, such as slides, cards, testimonials, team members, products, authors, FAQs, or repeated image/text blocks.
-- An **Element** is one editable content value.
-- A **Group** is one item/row inside a Grouped Location.
-
-Single Locations and Grouped Locations may share the same name. The location type keeps them distinct, so `Single Location: Catalog` and `Grouped Location: Catalog` may coexist.
-
----
-
-## Import Heading Format
-
-Use these Markdown headings exactly:
-
-```md
-# UpdateCase-Site: Site.name
-## UpdateCase-Page: Page.name
-### Source Templates
-### Page Metadata
-### Assets
-### Single Location: Location.name
-#### Grouped Location: Location.name
+## Project Rules for Agents
+- <project-specific rule, e.g. "Every table uses the sticky header element.">
 ```
 
 Rules:
 
-- Use the single top-level `#` heading for the website.
-- Use `##` headings for pages.
-- Use plain `###` headings only for export metadata sections such as source templates, page metadata, or assets.
-- Use `### Single Location: Name` for normal, non-group content areas.
-- Use `#### Grouped Location: Name` for grouped content areas.
-- Keep similar locations together, including related single and grouped locations.
-- Preserve visible copy, CTA labels, hrefs, image paths, alt text, form labels, and placeholder visual notes.
-
-Example of related locations staying together:
-
-```md
-### Single Location: Catalog
-#### Grouped Location: Catalog
-```
-
----
-
-## Forms
-
-Forms are never grouped locations.
-
-Form inputs are manually wired in programming and should be exported as single elements under a separate single location:
-
-```md
-### Single Location: Demo
-### Single Location: Demo Form Fields
-```
-
-Keep form field locations separate from the related form intro/copy location, even when the content is visually adjacent or semantically similar.
-
----
-
-## Element Types
-
-Valid element types are strictly:
-
-```text
-text
-paragraph
-general
-image
-```
-
-- Use `text` for short strings such as headings, labels, buttons, short descriptions, addresses, and other single-line values.
-- Use `paragraph` for plain multiline text without rich formatting.
-- Use `general` for rich text that requires formatting such as bold, italic, links, lists, or HTML.
-- Use `image` for editable website images.
-
-Do not invent new element types during conversion.
-
-Content rendering call:
-
-```php
-<?= $updateCase->getContentBy('LOCATION.NAME', 'ELEMENT.NAME'); ?>
-```
-
-Image rendering call:
-
-```php
-<?= $webroot.$updateCase->getImageBy('LOCATION.NAME', 'ELEMENT.NAME'); ?>
-```
-
-Grouped content rendering call:
-
-```php
-<?= $updateCase->getContentBy('LOCATION.NAME', 'ELEMENT.NAME', $group); ?>
-```
-
-Grouped image rendering call:
-
-```php
-<?= $webroot.$updateCase->getImageBy('LOCATION.NAME', 'ELEMENT.NAME', $group); ?>
-```
-
-The distinction between `text`, `paragraph`, and `general` matters to the UpdateCase editor/importer even though all three use `getContentBy()` when rendered.
-
----
-
-## Page Selection
-
-Every converted template must define its UpdateCase page near the top of the template:
-
-```php
-<?php $updateCase->changePage('PAGE.NAME'); ?>
-```
-
-`PAGE.NAME` must correspond exactly with the Page name generated in the UpdateCase import definition.
-
----
-
-## Group Loops
-
-Repeated adjacent structures should use Grouped Locations.
-
-Do not create independent Single Locations for every repeated item when they share the same structure. Instead, use one Grouped Location with multiple Groups.
-
-Example PHP:
-
-```php
-<?php $groups = $updateCase->getGroupNamesByLocation('Authors'); ?>
-<?php if ($groups): foreach ($groups as $group): ?>
-    <?= $updateCase->getContentBy('Authors', 'Name', $group); ?>
-    <?= $updateCase->getContentBy('Authors', 'Biography', $group); ?>
-    <?= $webroot.$updateCase->getImageBy('Authors', 'Photo', $group); ?>
-<?php endforeach; endif; ?>
-```
-
-The same Element names should normally be reused within each Group because each Group represents another instance of the same content structure.
-
----
-
-## UpdateCase Convert
-
-When instructed to perform **UpdateCase Convert**, Codex must:
-
-1. Identify the applicable Page for each converted template.
-2. Add `<?php $updateCase->changePage('PAGE.NAME'); ?>` near the top of each applicable template.
-3. Divide the page into logical Single Locations and Grouped Locations.
-4. Identify editable Elements and classify each as `text`, `paragraph`, `general`, or `image`.
-5. Replace hard-coded editable content with UpdateCase calls.
-6. Preserve the original clean content in the generated import definition.
-7. Add temporary fallback/debug content in the website when needed.
-
-Do not convert structural HTML, CSS classes, JavaScript, layout logic, or technical configuration into editable content unless explicitly instructed.
-
----
-
-## Temporary Fallback Content
-
-During conversion, the website must make it visually obvious when UpdateCase content is not yet being returned.
-
-Use a consistent marker such as:
-
-```text
-[UC-IMPORT] Original fallback content here
-```
-
-Rules:
-
-- Clean original content goes into the import definition.
-- Temporary website fallback/debug content is visibly marked.
-- If `[UC-IMPORT]` is visible after connecting UpdateCase, that field has not been successfully populated/connected.
-- The marker is temporary and must be removed during UpdateCase Cleanup.
-- Do not add the marker to the actual content imported into UpdateCase.
-
----
-
-## Markdown Import Definition
-
-Codex must generate a Markdown file describing the UpdateCase structure and initial content.
-
-This file is data, not prose documentation. Do not add commentary, explanations, conversational text, or undocumented fields inside the import data.
-
-Use the required Markdown headings plus fenced YAML blocks under each metadata/location heading. YAML provides deterministic structure while keeping the file inspectable.
-
-Example:
-
-````md
-# UpdateCase-Site: VendorGrid
-
-## UpdateCase-Page: Home
-
-### Source Templates
-
-```yaml
-templates:
-  - sourceFiles/templates/Pages/home.php
-```
-
-### Single Location: Hero
-
-```yaml
-elements:
-  - name: Heading
-    type: text
-    value: "Turn Custom Orders Into a Visual Experience."
-  - name: Body
-    type: paragraph
-    value: "Let customers choose products, colours, quantities, logos and customization online."
-```
-
-#### Grouped Location: Catalog
-
-```yaml
-groups:
-  - name: "1"
-    elements:
-      - name: Heading
-        type: text
-        value: "Your Catalog"
-      - name: Body
-        type: paragraph
-        value: "Build your own products, colours, sizing, variants and customization options."
-```
-````
-
-### Import Schema
-
-Metadata blocks may contain keys such as:
-
-```text
-source_url
-captured_at
-language
-page_slug
-templates
-assets
-```
-
-Single Location blocks require:
-
-```text
-elements
-```
-
-Grouped Location blocks require:
-
-```text
-groups
-```
-
-Every Element requires:
-
-```text
-name
-type
-value
-```
-
-Every Group requires:
-
-```text
-name
-elements
-```
-
-Group names must be stable and deterministic. Sequential names such as `1`, `2`, `3` are acceptable unless a meaningful existing identifier is available.
-
----
-
-## UpdateCase SaaS Import Workflow
-
-UpdateCase must not immediately create database records when this definition is pasted/uploaded.
-
-The intended application workflow is:
-
-```text
-Paste / Upload
-  -> Parse
-  -> Validate
-  -> Preview
-  -> User Review
-  -> Confirm Import
-  -> Create Records
-```
-
-At minimum, validation should confirm:
-
-- Required fields exist.
-- Element types are supported.
-- Location names are valid.
-- Element names are valid.
-- Group structures are valid.
-- Duplicate/conflicting names are detected according to UpdateCase rules.
-- Empty or malformed structures are reported.
-
-Only after explicit confirmation should UpdateCase create the actual Site, Page, Locations, Elements, Groups, and initial content. The importer should ideally perform creation transactionally so a failed import does not leave a partially created structure.
-
----
-
-## UpdateCase Cleanup
-
-Run **UpdateCase Cleanup** only after:
-
-1. The Markdown definition has been imported into UpdateCase.
-2. The website has been connected/synchronized.
-3. The UpdateCase calls are returning the expected content.
-4. The developer has reviewed the website.
-
-Cleanup must:
-
-- Remove `[UC-IMPORT]` fallback/debug content.
-- Remove temporary fallback conditionals that are no longer required.
-- Leave the UpdateCase PHP calls intact.
-- Preserve all HTML structure and styling.
-- Preserve group loops.
-- Ensure no original hard-coded editable content remains accidentally duplicated.
-- Report any UpdateCase calls that still appear empty or unresolved rather than silently deleting their fallback.
-
-Do not remove fallback/debug content from an unresolved element merely to make the conversion appear complete.
-
----
-
-## Core Principle
-
-Codex is responsible for understanding the website and proposing the UpdateCase structure.
-
-The generated Markdown is the deterministic contract between Codex and UpdateCase.
-
-UpdateCase itself should not have to guess what Codex meant.
-
-The human reviews the proposed structure before UpdateCase changes its database.
+- **Header:** follows "The SetupCase standard" README format below.
+- **Cron Jobs:** one line per active job. When adding, changing, or removing a cron job, update this list in the same change. This list is checked against production on deploy, so it must match reality.
+- **External Services:** one line per outside service (payments, storage, mail, APIs). Name the config key only, never the value. When adding or removing a service, update this list in the same change.
+- **Project Rules for Agents:** project-specific instructions. Where they differ from AGENTS.md, they win for this project.
+- Setup instructions do not go here. Docker setup lives in the Docker folder's own README.
 
 ---
 
@@ -1221,7 +848,7 @@ Owner:
 
 Under the hood:
 
-- Keys and config outside the webroot; no secrets in the repo (the UpdateCase site key is an accepted exception, see "UpdateCase Client Setup").
+- Keys and config outside the webroot; no secrets in the repo (installed modules may document accepted exceptions, see "Installed Modules").
 - Form bot check in place.
 - Error alerts set up.
 
@@ -1235,7 +862,7 @@ With UpdateCase installed (the managed service). A basic SetupCase site may have
 - Works on the devices it's used on.
 - HTTPS everywhere.
 - CSRF protection on.
-- Keys and config outside the webroot; no secrets in the repo (the UpdateCase site key is an accepted exception, see "UpdateCase Client Setup").
+- Keys and config outside the webroot; no secrets in the repo (installed modules may document accepted exceptions, see "Installed Modules").
 - Not indexed by Google (behind the login).
 - Error alerts set up.
 - Backups in place: [OfflineBox](https://www.OfflineBox.com) is connected to automate a daily data backup to S3. Install it from https://github.com/undoLogic/offlineBox (follow its README).
