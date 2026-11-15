@@ -76,10 +76,9 @@ This is MVP work (AGENTS.md "MVP Work"):
     - **Preconditions on the target:** refused while the file is `uploading` (no link is shown then), refused when the row has an S3 copy but S3 is off, and refused when it has local files but `FILES_LOCAL_PATH` is broken. Refuse rather than half-delete.
     - Takes the push lock, so it never races the cron job or the push-s3 link.
     - The `{id}/` folder is removed once empty. Each delete logs a `notice` (`[Files] user <id> deleted file <id> (<filename>)`) to `debug.log`.
-17. **The page is one template file (decided 2026-10-28).** `templates/Staff/Files/index.php` holds all the HTML: the upload form, setup checks, file grid and guide. This deliberately breaks the AGENTS 45-line base-template rule and the element convention, as the Status Endpoint block does.
+17. **The page is one template file (decided 2026-10-28).** `templates/Staff/Files/index.php` holds all the HTML: the upload form, setup checks, file grid and guide. This deliberately breaks the AGENTS one-screen base-template target and the element convention, as the Status Endpoint block does.
     - **Why:** it is a copy-and-paste code block. One file is simpler to copy, and once the block is in a project, that project's AGENTS.md splits it into elements.
     - The guide is wrapped in "CodeBlocks guide ... Remove this section on a project" markers, because it only belongs on this page.
-    - **Pre-commit hook:** the template is about 200 lines. Where `git-hooks/pre-commit` is installed, commit it with `PRECOMMIT_TEMPLATE_MAX_LINES=250` or `--no-verify`.
 
 ## Configuration
 

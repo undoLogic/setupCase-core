@@ -135,11 +135,6 @@ The feature Markdown file is the source of truth; the AI never stages, commits o
 - Never revert unrelated user changes; one logical change per commit.
 - Broad formatting only when nothing is staged (`git diff --cached --quiet`).
 
-**Pre-commit hook**
-
-- Blocks public PHP methods and base templates over 45 lines (private/protected and elements exempt).
-- Overrides: `PRECOMMIT_PUBLIC_FUNCTION_MAX_LINES`, `PRECOMMIT_TEMPLATE_MAX_LINES`, `SOFT_PRECOMMIT_DISABLE=1`, `--no-verify`.
-
 ## UpdateCase
 
 UpdateCase moves editable copy out of templates. The AI proposes the structure as a deterministic Markdown file, and a human approves it before anything is written to the database.

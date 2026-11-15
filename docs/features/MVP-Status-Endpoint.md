@@ -139,7 +139,7 @@ Everything lives in one controller, `App\Controller\StatusController` (decided 2
 
 1. Not GET, token not configured, no token sent (header or `?token=`), or `hash_equals()` fails: throw `NotFoundException` (normal 404 page).
 2. Otherwise count the logs (`index_countLogs()`).
-3. Browser request (decision 8): plain `View` class, no layout, template `templates/Status/index.php` holds the whole monitor page (kept as one file while the block is a drop-in; split into elements when integrated into a project). Kept under the 45-line pre-commit template limit. Otherwise return the JSON response.
+3. Browser request (decision 8): plain `View` class, no layout, template `templates/Status/index.php` holds the whole monitor page (kept as one file while the block is a drop-in; split into elements when integrated into a project). Otherwise return the JSON response.
 4. The controller sets ready-to-use view vars (status data, state, title, check interval); the template does not compute them. CSS and JS are loaded from the template with `$this->Html->css()` / `script()`.
 5. Private helpers: `index_tokenValid()`, `index_wantsHtml()`, `index_setMonitorVars()`.
 
