@@ -56,12 +56,14 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_renderFiles', [
             'Visual INDEX template (Staff access)' => APP . '../templates/Staff/CodeBlocks/index.php',
             'Visual VIEW template (Staff access)' => APP . '../templates/Staff/CodeBlocks/view.php',
+            'Visual VIEW template of a related record (Staff access)' => APP . '../templates/Staff/CodeBlockTypes/view.php',
             'Visual EDIT template (Manager access)' => APP . '../templates/Manager/CodeBlocks/edit.php',
         ]);
         $this->set('codeBlocks_renderVar', [
             'Controller INDEX action (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlocksController::class, 'index'),
             'Controller CREATE action (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlocksController::class, 'create'),
             'Controller VIEW action (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlocksController::class, 'view'),
+            'Controller VIEW action of a related record (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlockTypesController::class, 'view'),
             'Controller DUPLICATE action (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlocksController::class, 'duplicate'),
             'Controller EDIT action (Manager access)' => SetupCase::extractFunction(\App\Controller\Manager\CodeBlocksController::class, 'edit'),
             'Controller DELETE action (Manager access)' => SetupCase::extractFunction(\App\Controller\Manager\CodeBlocksController::class, 'delete'),

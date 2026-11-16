@@ -230,6 +230,44 @@ is what keeps it trivially correct — there is nothing in it to get wrong.
 
 ---
 
+## Index, View, Edit: Every Record Is Clickable
+
+Every project starts from this structure. Before any client-specific screen is built, every kind of record gets these three pages, so anyone can click around the data and follow related records from day one:
+
+| Page | Shows | Changes data |
+|---|---|---|
+| index | many records | no (GET) |
+| view | one record, everything about it | no (GET) |
+| edit | one record, its form | yes (POST) |
+
+This is the minimum, not the finished product. Screens built for a client's specific needs (dashboards, workflows, combined pages) are added on top later. They add to the baseline pages and never replace them, so every record stays reachable through its own view.
+
+- Every kind of record a person can see gets a read-only **view** page, so they can open one record and check its data. A record you can reach only through its edit form, or see only as a row in a list, does not have a view yet.
+- Every row, and every cell that stands for a record, links to that record's view. This includes cells for a related record: the customer or category shown on an order row links to that customer's or category's view.
+- A cell for a record that does not exist yet (e.g. a period not entered yet) links to the view of the parent record it would belong to.
+- Totals and other aggregates are not records and are not linked.
+- A view shows the record's fields, its status where it has one (e.g. active or removed, and who, when, why), the records under it (each linking to its own view), and its change history where one is kept.
+- Views are GET and read only (see "HTTP Method by Effect"). Edit and other action buttons on a view appear only for roles that can already reach those actions (prefix RBAC); the view itself never grants more access. Data scoping applies to views exactly as it does to lists.
+- The link target arrives from the model or controller as a ready-to-use URL in the row data (see "Passive View Principle"); the template does not choose it.
+- Name the action `view` (e.g. `/staff/en/orders/view/12`) and its elements `view_<location>` (see "Element Naming Convention").
+- The Application Foundation code block is the worked example: its index links each name to its view and each type to the type's view, and the type's view lists its records, each linking back.
+
+---
+
+## Sticky Filters (Index Pages)
+
+Every index page with filters or options at the top keeps them reachable while the list scrolls. Once the filter form's place at the top has scrolled under the fixed header, the form docks to the bottom of the screen, with the same left edge and width as its card. Scrolled back up, it returns to its place.
+
+- Copy, don't rebuild: the CSS, JS and element live in the Application Foundation code block (`webroot/css/sticky-filters-YYMMDD.css`, `webroot/js/sticky-filters-YYMMDD.js`, `templates/element/<year>/layout/sticky_filters.php`). The Staff CodeBlocks index is the worked example.
+- Opt in per page: add `'data-sticky-filters' => true` to the filter form's `Form->create()` options, and load the element once on that page. One sticky form per page.
+- Fixed header: the script uses Bootstrap's `.fixed-top`. If a project's theme uses another header, add `'data-sticky-filters-header' => '<selector>'` to the form. With no fixed header, the top of the screen is used.
+- Docked, a spacer of the same height holds the form's place so the page does not jump, and the `body` gets bottom padding equal to the form's height so the last rows are not hidden. The docked form is at most `50vh` tall and scrolls, since filters stack on a phone.
+- Undocked, the form looks exactly as before: the script clears every inline style it set.
+- It only moves the form. Filters submit as they do at the top, and no data changes.
+- Verify on desktop and phone widths: in place at the top, docked at the bottom when scrolled down, back in place when scrolled up, and changing a filter while docked reloads the list with that filter.
+
+---
+
 ## Base Template Philosophy
 
 Base templates should:

@@ -79,7 +79,8 @@ class CodeBlocksController extends AppController
 
         $this->set([
             'filters' => $data,
-            'rows' => $query->all(),
+            'rows' => $this->index_shapeRows($query->all()),
+            'canManage' => $this->canReachPrefix('Manager'),
         ]);
 
         // IGNORE
@@ -88,12 +89,14 @@ class CodeBlocksController extends AppController
         $this->set('codeBlocks_renderFiles', [
             'Visual INDEX template (Staff access)' => APP . '../templates/Staff/CodeBlocks/index.php',
             'Visual VIEW template (Staff access)' => APP . '../templates/Staff/CodeBlocks/view.php',
+            'Visual VIEW template of a related record (Staff access)' => APP . '../templates/Staff/CodeBlockTypes/view.php',
             'Visual CREATE / EDIT template (Manager template)' => APP . '../templates/Manager/CodeBlocks/edit.php',
         ]);
         $this->set('codeBlocks_renderVar', [
             'Controller INDEX action (Staff access)' => SetupCase::extractFunction(self::class, 'index'),
             'Controller CREATE action (Staff access)' => SetupCase::extractFunction(self::class, 'create'),
             'Controller VIEW action (Staff access)' => SetupCase::extractFunction(self::class, 'view'),
+            'Controller VIEW action of a related record (Staff access)' => SetupCase::extractFunction(\App\Controller\Staff\CodeBlockTypesController::class, 'view'),
             'Controller DUPLICATE action (Staff access)' => SetupCase::extractFunction(self::class, 'duplicate'),
             'Controller EDIT action (Manager access)' => SetupCase::extractFunction(\App\Controller\Manager\CodeBlocksController::class, 'edit'),
             'Controller DELETE action (Manager access)' => SetupCase::extractFunction(\App\Controller\Manager\CodeBlocksController::class, 'delete'),
@@ -166,7 +169,7 @@ class CodeBlocksController extends AppController
     public function view($id)
     {
         try {
-            $entity = $this->CodeBlocks->get($id);
+            $entity = $this->CodeBlocks->get($id, contain: ['CodeBlockTypes']);
         } catch (RecordNotFoundException $e) {
             $this->Flash->error(__('Record not found.'));
 
@@ -175,6 +178,9 @@ class CodeBlocksController extends AppController
 
         $this->set([
             'entity' => $entity,
+            'typeName' => $entity->code_block_type->name ?? '-',
+            'typeViewUrl' => $this->typeViewUrl($entity->code_block_type_id),
+            'canManage' => $this->canReachPrefix('Manager'),
             'pageTitle' => 'View Code Block',
             'pageSubTitle' => 'Read-only details',
         ]);
@@ -189,5 +195,49 @@ class CodeBlocksController extends AppController
             'Controller Action' => SetupCase::extractFunction(self::class, 'view'),
         ]);
         // IGNORE-END
+    }
+
+    /**
+     * Shape rows for the index: every cell that stands for a record gets its view URL here,
+     * so the template only renders (Passive View).
+     */
+    private function index_shapeRows(iterable $entities): array
+    {
+        $rows = [];
+        foreach ($entities as $entity) {
+            $rows[] = [
+                'id' => $entity->id,
+                'name' => $entity->name,
+                'description' => $entity->description,
+                'viewUrl' => ['prefix' => 'Staff', 'controller' => 'CodeBlocks', 'action' => 'view', $entity->id],
+                'typeName' => $entity->code_block_type->name ?? '-',
+                'typeViewUrl' => $this->typeViewUrl($entity->code_block_type_id),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * View URL of the related type, or null when the row has no type (nothing to link to).
+     */
+    private function typeViewUrl(?int $typeId): ?array
+    {
+        if (empty($typeId)) {
+            return null;
+        }
+
+        return ['prefix' => 'Staff', 'controller' => 'CodeBlockTypes', 'action' => 'view', $typeId];
+    }
+
+    /**
+     * Does the logged-in role hold this prefix (config 'rbac', set by RbacMiddleware)?
+     * Used only to hide buttons the role cannot reach; AccessMiddleware still enforces access.
+     */
+    private function canReachPrefix(string $prefix): bool
+    {
+        $access = $this->request->getAttribute('access');
+
+        return is_array($access) && array_key_exists($prefix, $access);
     }
 }

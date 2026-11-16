@@ -31,20 +31,22 @@
             <!-- Actions -->
             <div class="ms-auto d-flex gap-2 flex-wrap">
 
-                <?= $this->Html->link(
-                    'Edit',
-                    ['prefix' => 'Manager', 'action' => 'edit', $entity->id],
-                    ['class' => 'btn btn-sm btn-primary']
-                ) ?>
+                <?php if ($canManage): ?>
+                    <?= $this->Html->link(
+                        'Edit',
+                        ['prefix' => 'Manager', 'action' => 'edit', $entity->id],
+                        ['class' => 'btn btn-sm btn-primary']
+                    ) ?>
 
-                <?= $this->Form->postLink(
-                    'Delete',
-                    ['prefix' => 'Manager', 'action' => 'delete', $entity->id],
-                    [
-                        'class' => 'btn btn-sm btn-danger',
-                        'confirm' => 'Are you sure you want to delete this record?'
-                    ]
-                ) ?>
+                    <?= $this->Form->postLink(
+                        'Delete',
+                        ['prefix' => 'Manager', 'action' => 'delete', $entity->id],
+                        [
+                            'class' => 'btn btn-sm btn-danger',
+                            'confirm' => 'Are you sure you want to delete this record?'
+                        ]
+                    ) ?>
+                <?php endif; ?>
 
                 <button
                     type="button"
@@ -62,7 +64,7 @@
 
 <div class="row g-4">
 
-    <!-- Left column -->
+    <!-- Left column: the record's fields -->
     <div class="col-12 col-lg-6">
         <div class="card">
             <div class="card-header">
@@ -70,58 +72,35 @@
             </div>
 
             <div class="card-body">
-                <?= $this->Text->autoParagraph(h($entity->description)) ?>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Type</dt>
+                    <dd class="col-sm-8">
+                        <?php if ($typeViewUrl): ?>
+                            <?= $this->Html->link($typeName, $typeViewUrl) ?>
+                        <?php else: ?>
+                            <?= h($typeName) ?>
+                        <?php endif; ?>
+                    </dd>
+
+                    <dt class="col-sm-4">Created</dt>
+                    <dd class="col-sm-8"><?= h($entity->created) ?></dd>
+
+                    <dt class="col-sm-4">Modified</dt>
+                    <dd class="col-sm-8"><?= h($entity->modified) ?></dd>
+                </dl>
             </div>
         </div>
     </div>
 
-    <!-- Right column -->
+    <!-- Right column: long text (records under this one and change history go here when the record has them) -->
     <div class="col-12 col-lg-6">
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0">Associated Data</h6>
+                <h6 class="mb-0">Description</h6>
             </div>
 
-            <div class="card-body p-0">
-
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                    <tr>
-                        <th>Column 1</th>
-                        <th>Column 2</th>
-                        <th>Column 3</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-
-                    <?php foreach (range(1, 4) as $each): ?>
-                        <tr>
-                            <td class="text-nowrap">
-                                Row #<?= $each ?>
-
-                                <?= $this->Html->link(
-                                    'Edit',
-                                    ['action' => 'edit', $each],
-                                    ['class' => 'btn btn-sm btn-outline-primary ms-2']
-                                ) ?>
-
-                                <?= $this->Form->postLink(
-                                    'X',
-                                    ['action' => 'delete', $each],
-                                    [
-                                        'class' => 'btn btn-sm btn-outline-danger ms-1',
-                                        'confirm' => 'Really delete?'
-                                    ]
-                                ) ?>
-                            </td>
-                            <td>Info</td>
-                            <td>Goes here…</td>
-                        </tr>
-                    <?php endforeach; ?>
-
-                    </tbody>
-                </table>
-
+            <div class="card-body">
+                <?= $this->Text->autoParagraph(h($entity->description)) ?>
             </div>
         </div>
     </div>

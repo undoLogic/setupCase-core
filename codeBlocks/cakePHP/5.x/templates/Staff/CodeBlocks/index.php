@@ -1,3 +1,5 @@
+<?= $this->element('2026/layout/sticky_filters') ?>
+
 <div class="card shadow-sm">
 
     <!-- Card Header -->
@@ -26,14 +28,19 @@
 
         </div>
 
-        <!-- Filters -->
-        <div class="row g-2 mt-3 pt-3 border-top">
-            <div class="col-12 col-lg-3">
-                <?= $this->Form->control('dropdown', [
-                    'options' => ['1' => '1', '2' => '2'],
-                    'empty' => 'Choose …',
+        <!-- Filters (docks to the bottom of the screen when scrolled: AGENTS.md "Sticky Filters") -->
+        <?= $this->Form->create(null, [
+            'url' => ['action' => 'index'],
+            'class' => 'mt-3 pt-3 border-top',
+            'data-sticky-filters' => true,
+        ]) ?>
+        <div class="row g-2">
+            <div class="col-12 col-lg-4">
+                <?= $this->Form->control('name', [
                     'label' => false,
-                    'class' => 'form-select form-select-sm'
+                    'placeholder' => 'Search name',
+                    'value' => $filters['name'] ?? '',
+                    'class' => 'form-control form-control-sm'
                 ]) ?>
             </div>
 
@@ -42,6 +49,7 @@
                     'options' => ['1' => '1', '2' => '2'],
                     'empty' => 'Choose …',
                     'label' => false,
+                    'value' => $filters['dropdown2'] ?? '',
                     'class' => 'form-select form-select-sm'
                 ]) ?>
             </div>
@@ -51,19 +59,17 @@
                     'options' => ['1' => '1', '2' => '2'],
                     'empty' => 'Choose …',
                     'label' => false,
+                    'value' => $filters['dropdown3'] ?? '',
                     'class' => 'form-select form-select-sm'
                 ]) ?>
             </div>
 
-            <div class="col-12 col-lg-3">
-                <?= $this->Form->control('dropdown4', [
-                    'options' => ['1' => '1', '2' => '2'],
-                    'empty' => 'Choose …',
-                    'label' => false,
-                    'class' => 'form-select form-select-sm'
-                ]) ?>
+            <div class="col-12 col-lg-2 d-flex gap-2">
+                <?= $this->Form->button('Filter', ['class' => 'btn btn-sm btn-primary']) ?>
+                <?= $this->Html->link('Reset', ['action' => 'index', '?' => ['reset' => 1]], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
             </div>
         </div>
+        <?= $this->Form->end() ?>
 
     </div>
 
@@ -75,6 +81,7 @@
             <tr>
                 <th style="width: 1%;">Actions</th>
                 <th>Name</th>
+                <th>Type</th>
                 <th>Description</th>
             </tr>
             </thead>
@@ -83,15 +90,24 @@
             <?php foreach ($rows as $each): ?>
                 <tr>
                     <td class="text-nowrap">
-                        <?= $this->Html->link('View', ['action' => 'view', $each['id']], ['class' => 'btn btn-sm btn-primary']) ?>
-                        <?= $this->Html->link('Edit', ['prefix' => 'Manager', 'action' => 'edit', $each['id']], ['class' => 'btn btn-sm btn-warning']) ?>
-                        <?= $this->Form->postLink(
-                            'X',
-                            ['prefix' => 'Manager', 'action' => 'delete', $each['id']],
-                            ['class' => 'btn btn-sm btn-danger', 'confirm' => 'Are you sure?']
-                        ) ?>
+                        <?= $this->Html->link('View', $each['viewUrl'], ['class' => 'btn btn-sm btn-primary']) ?>
+                        <?php if ($canManage): ?>
+                            <?= $this->Html->link('Edit', ['prefix' => 'Manager', 'action' => 'edit', $each['id']], ['class' => 'btn btn-sm btn-warning']) ?>
+                            <?= $this->Form->postLink(
+                                'X',
+                                ['prefix' => 'Manager', 'action' => 'delete', $each['id']],
+                                ['class' => 'btn btn-sm btn-danger', 'confirm' => 'Are you sure?']
+                            ) ?>
+                        <?php endif; ?>
                     </td>
-                    <td><?= h($each['name']) ?></td>
+                    <td><?= $this->Html->link($each['name'], $each['viewUrl']) ?></td>
+                    <td>
+                        <?php if ($each['typeViewUrl']): ?>
+                            <?= $this->Html->link($each['typeName'], $each['typeViewUrl']) ?>
+                        <?php else: ?>
+                            <?= h($each['typeName']) ?>
+                        <?php endif; ?>
+                    </td>
                     <td><?= h($each['description']) ?></td>
                 </tr>
             <?php endforeach; ?>

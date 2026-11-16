@@ -176,6 +176,11 @@ The same idea applies: don't upgrade in place.
 - [x] Application Foundation with database: STAFF can list, view and create; MANAGER can edit and delete; STAFF is refused on edit
 - [x] Delete and duplicate refuse GET (405); a delete button removes the row
 - [x] Edit ignores a non-local `cameFrom`
+- [ ] Application Foundation index: each name links to its view, and each type links to the type's view
+- [ ] The type's view lists its code blocks, each linking to its own view
+- [ ] STAFF sees no Edit or Delete buttons on the index or view; MANAGER does
+- [ ] Index name search filters the list, and Reset clears it
+- [ ] Sticky filters, desktop and phone width: in place at the top, docked at the bottom when scrolled down, back in place when scrolled up; changing a filter while docked reloads the list with that filter
 - [x] There is no public signup URL (`/en/users/add` returns 404)
 - [x] `bin/cake users add` creates a user who can then log in (generated and typed password)
 - [x] `bin/cake users add` refuses a duplicate email, an invalid email, an unknown role and a password under 12 characters

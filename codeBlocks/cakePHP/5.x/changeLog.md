@@ -49,3 +49,17 @@ Built with `init-web/5.x/1-Install.php` (CakePHP 5.4.4, cakephp/authentication 4
 ## 2026-11-11 - Bootstrap flash messages
 
 - new: `templates/element/flash/{success,error,warning,info,default}.php` render one shared `flash/bootstrap_alert.php` (Bootstrap dismissible alert). The skeleton `message <type>` classes are kept so pages without Bootstrap (login uses the skeleton layout) still look right.
+
+## 2026-11-16 - Index, View, Edit: every record is clickable
+
+- new: Staff `CodeBlockTypesController::view()` and `templates/Staff/CodeBlockTypes/view.php`: read-only view of the related (parent) record, listing its code blocks, each linking to its own view
+- new: `CodeBlockTypesTable` `hasMany CodeBlocks` and `getForView()` (STATUS/MSG array)
+- changed: Staff index links each name to its view and adds a Type column linking to the type's view. Link URLs are built in the controller (`index_shapeRows()`), not in the template
+- changed: Staff view shows the type (linked), created and modified, and replaces the placeholder "Associated Data" table (it linked to actions that do not exist)
+- changed: Edit and Delete buttons on the index and view show only for roles holding the Manager prefix (`canReachPrefix()` reads the RBAC `access` attribute). AccessMiddleware still enforces access
+- changed: Application Foundation page lists the related-record view template and action
+
+## 2026-11-16 - Sticky filters on index pages
+
+- new: `webroot/css/sticky-filters-261116.css`, `webroot/js/sticky-filters-261116.js` (no library) and `templates/element/2026/layout/sticky_filters.php`. A form with `data-sticky-filters` docks to the bottom of the screen once its place has scrolled under the fixed header (`.fixed-top`, or `data-sticky-filters-header`)
+- changed: the Staff index filters are now a real form (POST, saved in the session as before) with a name search, Filter and Reset, and opt in to sticky filters. Before, the dropdowns sat outside any form and never submitted

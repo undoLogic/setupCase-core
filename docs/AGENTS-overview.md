@@ -89,6 +89,8 @@ Logic lives in Table classes; templates only render what they are handed.
 
 - Only trivial `if (!empty(...))` / `foreach`; no business branching, grouping or derived values.
 - Display strings and link targets arrive ready-made from the controller or model.
+- Index, view, edit is the baseline every project starts with, before client-specific screens are added on top: every record has a read-only view page, and every row or cell that stands for a record (including related records) links to it. Action buttons show only for roles that can reach them.
+- Sticky filters: an index page's filter form docks to the bottom of the screen while the list scrolls. Copy the CSS, JS and element from the Application Foundation and opt in with `data-sticky-filters` on the form.
 - Base templates are a short Bootstrap shell (container, row, filters, body); detail goes into elements.
 
 **Element naming**
