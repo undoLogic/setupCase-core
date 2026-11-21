@@ -204,29 +204,40 @@ Avoid excessive chaining of return values between private helper functions whene
 ---
 
 
-# PHP Traits
+# Class Structure: Traits, Tables and Service Classes
+
+## Traits
 
 - Do not create new PHP traits, and do not add methods to existing project traits.
 - Framework and library traits (e.g. CakePHP's `LocatorAwareTrait`) may be used as normal.
 - Existing project traits are legacy. Leave them as they are unless the spec says to convert them.
 
-## Class Structure Decisions Happen at Spec Review
+## Table or Service Class?
 
-- During planning, if the spec adds substantial code to an already large class, or needs logic shared between classes, add a **Class structure** section to the spec.
-- In that section, propose the options and let the user choose:
+Ask: is this code about the data this table owns, or is it a separate job that happens to use that data?
+
+- **Stays in the table:** finders, validation, saving and updating the table's own records, and small helpers for those. Keep them here even if the class gets long.
+- **Becomes a service class (`src/Service`):** a self-contained job with its own rules, vocabulary or dependencies (e.g. signing, expiry, URLs, mail, external APIs). Test: if the feature were removed, the table would not need to change.
+- Do not create a service just to make a class shorter, or to wrap a single query.
+- If the code needs mailers, signers, HTTP clients or other services, that is a strong sign it belongs in a service, not the table.
+
+## Decide at Spec Review
+
+- During planning, if the spec adds substantial code to a large class, introduces a self-contained job, or needs logic shared between classes, add a **Class structure** section to the spec.
+- Propose the options and let the user choose:
   1. Keep the code in the existing class.
-  2. Create a new service class that the class calls.
+  2. Create a new service class.
   3. Create a shared class used by several classes.
-- For each option, state which classes would use it and what it depends on (constants, config, tables, other services).
+- For each option, state which classes use it and what it depends on (constants, config, tables, other services).
 
 ## Explicit Dependencies
 
-- Shared code must receive what it needs explicitly, through constructor or method arguments.
-- Never assume the calling or host class defines a constant, property or method.
+- Services and shared classes receive what they need through constructor or method arguments.
+- Never assume the calling class defines a constant, property or method.
 
 ## During Implementation
 
-- If a structure question comes up that the spec didn't cover, stop and return to the user. Do not improvise a trait or a new class structure.
+- If a structure question comes up that the spec didn't cover, stop and return to the user. Do not improvise a trait or new class structure.
 
 ---
 
