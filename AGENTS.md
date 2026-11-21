@@ -203,6 +203,32 @@ Avoid excessive chaining of return values between private helper functions whene
 
 ---
 
+# PHP Traits
+
+- Do not create new PHP traits, and do not add methods to existing project traits.
+- Framework and library traits (e.g. CakePHP's `LocatorAwareTrait`) may be used as normal.
+- Existing project traits are legacy. Leave them as they are unless the spec says to convert them.
+
+## Class Structure Decisions Happen at Spec Review
+
+- During planning, if the spec adds substantial code to an already large class, or needs logic shared between classes, add a **Class structure** section to the spec.
+- In that section, propose the options and let the user choose:
+  1. Keep the code in the existing class.
+  2. Create a new service class that the class calls.
+  3. Create a shared class used by several classes.
+- For each option, state which classes would use it and what it depends on (constants, config, tables, other services).
+
+## Explicit Dependencies
+
+- Shared code must receive what it needs explicitly, through constructor or method arguments.
+- Never assume the calling or host class defines a constant, property or method.
+
+## During Implementation
+
+- If a structure question comes up that the spec didn't cover, stop and return to the user. Do not improvise a trait or a new class structure.
+
+---
+
 # Template / View Rules
 
 ## Passive View Principle
