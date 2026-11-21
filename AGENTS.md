@@ -203,6 +203,7 @@ Avoid excessive chaining of return values between private helper functions whene
 
 ---
 
+
 # PHP Traits
 
 - Do not create new PHP traits, and do not add methods to existing project traits.
