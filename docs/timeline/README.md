@@ -1,6 +1,6 @@
 # Software Timeline
 
-A per-project record of how the software has grown, one section per calendar quarter. The client sees only the polished summary of completed work; the raw git history stays in the master file.
+A per-project record of how the software has grown, one section per calendar quarter. The client sees only the polished summary of completed work; the raw git history and the current quarter's running list stay in the master file.
 
 ## Files
 
@@ -12,7 +12,22 @@ A per-project record of how the software has grown, one section per calendar qua
 
 Run `docs/timeline/build-public.sh` after every change to the master, then commit both files. Never edit the public copy by hand.
 
-## Format (per quarter)
+## Format (current quarter)
+
+````
+## 2024 Q4
+
+### Running list
+
+- Short, client-readable line about one completed piece of work
+- Another line
+````
+
+- One line per completed piece of work, added as the work completes. No review step needed.
+- Lines follow "Writing the Public Summary" below. No dates and no monthly or daily grouping.
+- The running list is replaced by the Public Summary at quarter end (see "Quarterly update").
+
+## Format (finished quarters)
 
 ````
 ## 2024 Q3
@@ -70,12 +85,12 @@ One `## Platform Overview` section sits above the quarters. It is the first thin
 
 ## Rules
 
-- Granularity is calendar quarter only. Never per-commit or per-month detail in the Public Summary.
+- Granularity is calendar quarter only. No monthly or daily entries, and never per-commit or per-month detail in the Public Summary.
 - Raw Git Context is always kept, never deleted, never shown to customers.
-- AI writes a Public Summary from the quarter's Raw Git Context ONLY when the Public Summary is empty. Once it has content, AI never regenerates or edits it.
+- AI writes a Public Summary from the quarter's running list and Raw Git Context ONLY when the Public Summary is empty. Once it has content, the quarter is frozen: AI never regenerates or edits it.
 - A person may edit any Public Summary by hand and reviews the wording before committing (the Git commit is the review step).
-- Updates run only when asked (quarterly routine), never as a side task during unrelated work.
-- A quarter is added only once it has ended.
+- The quarterly update runs only when asked, never as a side task during unrelated work. Adding a running list line is not a quarterly update.
+- The current quarter is added with its first running list line and holds only the running list. Raw Git Context and Public Summary are added once it has ended.
 
 ## Writing the Public Summary
 
@@ -86,8 +101,9 @@ One `## Platform Overview` section sits above the quarters. It is the first thin
 
 ## Quarterly update
 
-1. Add `## YYYY Qn` for the quarter that just ended, at the top of the quarters.
+1. Find `## YYYY Qn` for the quarter that just ended. If it has no heading yet (no running list was kept), add it in order, newest first.
 2. Fill Raw Git Context from `git log --reverse --date=short --format='%ad | %an | %s'` for that quarter.
-3. Write the Public Summary from the Raw Git Context.
-4. Check whether the Platform Overview needs a new system or capability; update it only if the new quarter supports it.
-5. Run `docs/timeline/build-public.sh`, review, commit.
+3. Condense the running list into the Public Summary, checking it against the Raw Git Context so missed items are caught.
+4. Remove the running list. The quarter is now frozen.
+5. Check whether the Platform Overview needs a new system or capability; update it only if the new quarter supports it.
+6. Run `docs/timeline/build-public.sh`, review, commit.

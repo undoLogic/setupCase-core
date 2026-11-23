@@ -128,7 +128,8 @@ The feature Markdown file is the source of truth; the AI never stages, commits o
 
 - Each significant feature has a Markdown file with intent, rules, edge cases and a `## Testing` section.
 - Testing format: group, **Intent**, **Surfaces**, then `- [ ]` scenarios (no PHPUnit detail).
-- Code, tests and doc disagree: the feature file wins unless the user changes the requirement.
+- Code, tests and doc disagree: the feature file wins unless the user changes the requirement (an agreed decision in an open to-do counts).
+- To-dos (`docs/todos/`): one temporary file per request. Feature file and timeline are updated only at closing, then the to-do is deleted.
 - "MVP" work: no automated tests, but still syntax/lint checks and say tests were skipped.
 
 **Git hygiene**
@@ -168,8 +169,8 @@ The SetupCase standard (last updated 2026-11-06) is a promise list checked only 
 - The README top states the profile, last-checked date and an `[x]` / `[ ]` / `[n/a]` checklist.
 - **Journeys** (`docs/journeys/`): step-by-step flows that generate screenshots and a client PDF.
 - **aiAccess:** password-less login for the journey runner, Docker only, one fixed AI user, local redirects only; any change needs human review.
-- **Bugs/todos** (`docs/bugs/`, `docs/todos/`): tidy into Title / Description / Notes on touch, never invent details.
-- **Timeline:** `docs/timeline/`, per quarter.
+- **Bugs** (`docs/bugs/`): tidy into Title / Description / Notes on touch, never invent details.
+- **Timeline:** `docs/timeline/`, per quarter, with a running list for the current quarter.
 - **Docker networking:** never `down -v` or volume prunes; ask before restarting Docker.
 - **License:** Apache-2.0; keep headers, LICENSE and NOTICE when copying.
 

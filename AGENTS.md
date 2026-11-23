@@ -123,7 +123,7 @@ When you find an existing action that changes state on GET:
 
 - Flag it and offer to convert it to POST.
 - Do not convert it during unrelated work unless the user agrees.
-- If the user defers ("later"), add a short note to `docs/todos/` naming the action, then carry on without pushing further.
+- If the user defers ("later"), add a to-do naming the action (see "Docs rules"), then carry on without pushing further.
 
 ## Non-HTTP Entry Points
 
@@ -584,7 +584,7 @@ Verify:
 
 ## Feature Documentation and Test Specifications
 
-Each significant feature should have a dedicated Markdown feature file.
+Each significant feature should have a dedicated Markdown feature file. "Docs rules" sets where it lives, and when it is updated if the work comes from a to-do.
 
 The feature file is the **single source of truth** for:
 
@@ -604,11 +604,11 @@ When creating or materially modifying a feature:
 
 1. Locate the existing feature Markdown file.
 2. Read it before making implementation changes.
-3. Update it whenever feature behaviour, requirements, or expectations change.
-4. Add or update the `## Testing` section as part of the same work.
+3. Update it whenever feature behaviour, requirements, or expectations change (for a to-do, at closing).
+4. Add or update the `## Testing` section at the same time.
 5. Ensure automated tests remain aligned with the documented scenarios.
 
-If no feature file exists for a significant new feature, create one under the project's established feature documentation location before or alongside implementation.
+If no feature file exists for a significant new feature, create one before or alongside implementation (for a to-do, at closing).
 
 The feature file should describe **what the system must do**, not duplicate the PHP implementation.
 
@@ -692,7 +692,7 @@ implement and verify those scenarios.
 
 When changing feature behaviour:
 
-1. Update the feature file first or as part of the same change.
+1. Update the feature file first or as part of the same change. For a to-do, record the decision in the to-do file instead; it is merged at closing.
 2. Review the `## Testing` scenarios.
 3. Update affected automated tests to match.
 4. Add tests for newly documented behaviour where appropriate.
@@ -700,7 +700,7 @@ When changing feature behaviour:
 
 Never silently change automated tests to accommodate changed code when the feature specification still describes the old behaviour.
 
-If the implementation, test, and feature document disagree, identify the conflict and use the feature file as the intended behavioural source of truth unless the user explicitly changes the requirement.
+If the implementation, test, and feature document disagree, identify the conflict and use the feature file as the intended behavioural source of truth unless the user explicitly changes the requirement. A decision agreed with the user in an open to-do is such a change: follow the to-do, and update the automated tests along with the code.
 
 ---
 
@@ -732,6 +732,8 @@ For non-MVP feature work, do not consider a feature change complete until:
 - the `## Testing` section reflects the expected behaviour
 - relevant automated tests have been updated or added where practical
 - executed verification is reported
+
+For a to-do, the two feature-file items above are met at closing. Report the code, tests and verification first, so the user can confirm the work is done.
 
 If automated testing cannot be completed, leave the human-readable testing scenarios accurate and clearly state which scenarios remain unverified.
 
@@ -851,9 +853,26 @@ Rules:
 
 ---
 
-## Bug and Todo Files
+## Docs rules
 
-If `docs/bugs/` exists, treat each file in it as a bug note. When you touch a bug file, rewrite it in place into a light structure: a `# Title` line, a short `## Description`, and the author's original notes kept under `## Notes`. If `docs/todos/` exists, treat its files the same way, with the same structure.
+1. One fact, one place. Every rule or decision lives in exactly one file; other files link to it, never repeat it.
+2. Feature files: `docs/features/<module>.md`, one per module. Holds the module's rules, decisions, known differences and `## Testing` scenarios.
+3. To-dos: `docs/todos/<YYYY-MM-DD>-<short-description>.md`, one per request, temporary. The original request (e.g. a client email) may be pasted in. Never invent details the author did not provide.
+   - While working on a to-do, change only that to-do file and the code (including its tests). Do not edit feature files, the timeline or other docs during the work.
+   - Exceptions: the README's Cron Jobs and External Services lists, which change with the code (see "Project README Format"), and a new to-do for something the user defers.
+4. Closing a to-do (only when the user confirms the work is done):
+   - Merge the decisions into the module's feature file, with one short origin line: date, who asked, the gist and what was agreed (e.g. "2026-11-20, the client asked for helpline notifications to go to a new contact; agreed to move the recipient into Settings."). Never copy the full email, contact details or personal information.
+   - Add one short, client-readable line to the current quarter's running list in the timeline (see `docs/timeline/README.md`).
+   - Delete the to-do file.
+5. Work completed outside a to-do also gets one line in the current quarter's running list.
+6. Never create a new markdown file outside `docs/features/`, `docs/todos/`, `docs/timeline/`, `docs/bugs/` and `docs/journeys/` without the user asking. The project README (see "Project README Format") and a module's own README are allowed.
+7. `docs/todos/` should be empty when the project is caught up.
+
+---
+
+## Bug Files
+
+If `docs/bugs/` exists, treat each file in it as a bug note. When you touch a bug file, rewrite it in place into a light structure: a `# Title` line, a short `## Description`, and the author's original notes kept under `## Notes`.
 
 Only reorganize what the author wrote. Never invent a title, description, severity, reproduction steps, or any detail the author did not provide. This is a formatting-on-touch rule, not a tracking system: clean up the text, do not embellish it.
 
