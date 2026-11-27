@@ -1,6 +1,6 @@
 # FEATURE: Docker Linux Domains
 
-SetupCase by undoLogic, core feature. A new folder in SetupCase core, next to the existing Docker Linux folder. The old folder's only change is one added file, `0allstop.sh` (see section 7). Each project gets its own `.localhost` domains through a shared local Traefik reverse proxy, so several projects run at once with no port juggling and no cookie clashes.
+SetupCase by undoLogic, core feature. A new folder in SetupCase core, `dockerLinuxDomains/`, next to the existing Docker Linux folder. The old folder's only change is one added file, `0allstop.sh` (see section 7). Each project gets its own `.localhost` domains through a shared local Traefik reverse proxy, so several projects run at once with no port juggling and no cookie clashes.
 
 The folder is named after the concept, not the tool. If Traefik is ever swapped for another proxy, the name still holds.
 
@@ -84,14 +84,18 @@ volumes:
 
 Same structure as the existing Docker Linux folder:
 
-- `.env` holds `PROJECT_NAME` only (same as today)
+- `.env` holds `PROJECT_NAME` only (same as today). Use the same name as `dockerLinux/.env` so both folders share the database. Lowercase letters, digits and `-` only: it becomes a domain, and domains cannot contain `_` (stricter than the old folder).
 - `docker-compose.yml`
 - `docker-common.sh` (own copy: Docker access check, `PROJECT_NAME` validation, subnet picking)
 - `sites-available/`, `ini/`, `control/`
+- `private/` (Files S3 Offload stand-in, gitignored). Its own folder: `ini/php.ini` points at `dockerLinuxDomains/private/files`, so local files are not shared with the old folder.
 - `sql/`
 - `secrets.env.example` (copied to `secrets.env`, never committed)
 - `web/` (renamed from `web81`, whose name is already stale: its Dockerfile uses PHP 8.3). The Dockerfile holds the PHP version and everything else directly, with no build variables. An upgrade edits the Dockerfile's `FROM` line and the folder name never goes stale.
 - the numbered scripts below
+- `README.md` (getting started, configuration, troubleshooting)
+
+The folder is listed in `install_setupCaseCore_modules.sh` and `import_from_testflight.sh` next to `dockerLinux`.
 
 First-time setup in a project: copy the folder in, set `PROJECT_NAME` in `.env`, run `1buildDocker.sh`.
 
@@ -110,7 +114,7 @@ Numbering: 0 = stop commands, 1 = normal in-order flow, 2 = working inside the c
 | `1startDocker.sh` | Ensures the domains proxy is up, then starts the project (see section 6). Pure start, not a restart. |
 | `2loginDockerContainer.sh` | Opens a shell in the project's web container (for Composer etc.). |
 | `5startDomains.sh` | Auxiliary: manually starts Traefik and the shared network. |
-| `9resetDatabase.sh` | Reloads the database from `sql/` while it keeps running (same as today). |
+| `9resetDatabase.sh` | Asks for the project name, then deletes the database volume and reloads it from `sql/` (same as today). The volume is removed by its fixed name, because it may have been created by the old folder. The old folder sees the reset too. |
 
 All scripts echo the real Docker command before running it.
 
@@ -118,47 +122,19 @@ All scripts echo the real Docker command before running it.
 
 ## 6. 1startDocker.sh logic
 
-0. Same checks as today: Docker access, `PROJECT_NAME` valid, pick the project subnet. The subnet check reads `${PROJECT_NAME}-domains_default` (this variant's Compose project name), not `${PROJECT_NAME}_default`.
+0. Same checks as today: Docker access, `PROJECT_NAME` valid, pick the project subnet. The subnet check reads `${PROJECT_NAME}-domains_default` (this variant's Compose project name), not `${PROJECT_NAME}_default`. The Compose project name is set by `name:` in `docker-compose.yml`, so every script and a plain `docker compose` use it without a `-p` flag.
 1. Create the shared `domains` network if it does not exist, with a fixed `172.16.x.0/24` subnet picked the same way as project subnets. A plain `docker network create` can land on `192.168.x` and take the router's address (see "Local Docker Network Troubleshooting" in AGENTS.md).
 2. **Check** whether a container named `traefik` is running (ask Docker; don't try-and-fail).
 3. If running: print a warning ("domains proxy already running, skipping"), not an error. Optionally warn if its version differs from the one this folder expects.
-4. If not running: start Traefik with a single `docker run` (fixed name `traefik`, port 80, Docker socket read-only, `exposedByDefault=false`, attached to `domains`).
+4. If not running: start Traefik with a single `docker run` (fixed name `traefik`, port 80, Docker socket read-only, `exposedByDefault=false`, attached to `domains`). If that fails (port 80 in use), remove the half-created container and stop with an error that says to run `0allstop.sh`.
 5. Start the project with `docker compose up -d`.
 6. Print the project's addresses.
 
-Sketch:
+Implemented in `docker-common.sh` (`domains_start()`, `domains_project_up()`), shared by `1startDocker.sh`, `1reStartDocker.sh`, `1buildDocker.sh`, `9resetDatabase.sh` and `5startDomains.sh`.
 
-```bash
-#!/usr/bin/env bash
-set -e
-source .env
-TRAEFIK_IMAGE="traefik:v3"
+The Traefik image is `traefik:v3.6`. Docker Engine 29 refuses the older Docker API that Traefik before v3.6 uses, so the proxy would see no projects. Traefik also runs with `--security-opt label=disable` so it can read the Docker socket where SELinux is enforced.
 
-run() { echo "> $*"; "$@"; }
-
-docker network inspect domains >/dev/null 2>&1 || run docker network create --subnet "$DOMAINS_SUBNET" domains
-
-if [ "$(docker ps -q -f name=^traefik$)" ]; then
-  echo "WARNING: domains proxy already running, skipping"
-else
-  docker rm traefik >/dev/null 2>&1 || true   # remove a stopped leftover
-  run docker run -d --name traefik --restart unless-stopped \
-    -p 80:80 \
-    -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    --network domains \
-    "$TRAEFIK_IMAGE" \
-    --providers.docker=true \
-    --providers.docker.exposedbydefault=false \
-    --entrypoints.web.address=:80
-fi
-
-run docker compose -p "${PROJECT_NAME}-domains" up -d
-
-echo "Site:       http://${PROJECT_NAME}.localhost"
-echo "phpMyAdmin: http://pma.${PROJECT_NAME}.localhost"
-```
-
-Every project ships the identical script, so the first project started brings up Traefik and later ones skip it. Keep the script identical everywhere and update it through SetupCase core, because whichever project starts Traefik first decides its version and settings.
+Every project ships the identical `docker-common.sh`, so the first project started brings up Traefik and later ones skip it. Keep it identical everywhere and update it through SetupCase core, because whichever project starts Traefik first decides its version and settings.
 
 Note for Aurora / Fedora Silverblue: binding port 80 needs either rootful Docker or allowing unprivileged ports. Verify on first setup.
 
@@ -199,4 +175,5 @@ Note for Aurora / Fedora Silverblue: binding port 80 needs either rootful Docker
 - Each project gets its own domain, so session cookies no longer clash between projects (cookies ignore ports).
 - Password managers (e.g. Bitwarden): add `{PROJECT_NAME}.localhost` as an extra address on the live login and set match detection to host, so local projects don't share logins.
 - Possible later addition: a mail catcher at `mail.{PROJECT_NAME}.localhost`.
+- Not built yet: the optional Traefik dashboard at `traefik.localhost` (section 3).
 - Public repo: docs and examples name no clients; refer to any client as CUSTOMER.

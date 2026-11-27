@@ -11,6 +11,7 @@ MODULES=(
     "init-web"
     "dockerWSL"
     "dockerLinux"
+    "dockerLinuxDomains"
     "launchPad_win"
     "launchPad_linux"
 )

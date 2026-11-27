@@ -17,6 +17,7 @@ PATHS=(
     init-web
     docs
     dockerLinux
+    dockerLinuxDomains
     AGENTS.md
     README.md
 )

@@ -1,0 +1,79 @@
+# Project name comes from PROJECT_NAME in dockerLinuxDomains/.env (see docs/features/MVP-Docker-Linux-Domains.md).
+# "-domains" keeps this Compose project separate from the dockerLinux one (${PROJECT_NAME}),
+# so Docker never quietly swaps one variant's containers for the other's.
+name: ${PROJECT_NAME:?Set PROJECT_NAME in dockerLinuxDomains/.env}-domains
+
+# No published ports: the shared Traefik proxy (started by 1startDocker.sh) routes by domain.
+services:
+  web:
+    build: ./web
+    image: ${PROJECT_NAME}_web:local
+    container_name: ${PROJECT_NAME}-web
+    networks: [default, domains]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=domains
+      - traefik.http.routers.${PROJECT_NAME}.rule=Host(`${PROJECT_NAME}.localhost`)
+      - traefik.http.routers.${PROJECT_NAME}.entrypoints=web
+      - traefik.http.services.${PROJECT_NAME}.loadbalancer.server.port=80
+    environment:
+      DATABASE_DEFAULT_URL: mysql://root:undologic@db/LIVE_database
+      DATABASE_TEST_URL: mysql://root:undologic@db/test_automation
+      DATABASE_NAME: local
+      SECURITY_SALT: CHANGE_ME_NOW_THIS_IS_INSECURE_IF_YOU_LEAVE_IT
+    # Test-only secrets (e.g. FILES_S3_*), never committed. Copy secrets.env.example to secrets.env.
+    env_file:
+      - path: ./secrets.env
+        required: false
+    volumes:
+      - ../.:/var/www/vhosts/website.com/www
+      - ./sites-available/:/etc/apache2/sites-available/
+      - ./control/:/var/www/html/
+      - ./ini/php.ini:/usr/local/etc/php/conf.d/php.ini
+      - ${HOME}/.codex:/var/www/.codex
+    depends_on:
+      - db
+
+  phpmyadmin:
+    image: "phpmyadmin/phpmyadmin"
+    container_name: ${PROJECT_NAME}-pma
+    networks: [default, domains]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=domains
+      - traefik.http.routers.${PROJECT_NAME}-pma.rule=Host(`pma.${PROJECT_NAME}.localhost`)
+      - traefik.http.routers.${PROJECT_NAME}-pma.entrypoints=web
+      - traefik.http.services.${PROJECT_NAME}-pma.loadbalancer.server.port=80
+    environment:
+      UPLOAD_LIMIT: 300M
+    depends_on:
+      - db
+
+  db:
+    image: "mysql:5.7"
+    container_name: ${PROJECT_NAME}-db
+    networks: [default]   # private: no domain, no published port
+    command: --max_allowed_packet=932505856 --innodb-log-file-size=150663296 --sql-mode=NO_ENGINE_SUBSTITUTION
+    volumes:
+      - ./sql/:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: undologic
+      MYSQL_DATABASE: LIVE_database
+
+volumes:
+  db_data:
+    # Fixed name, the same one dockerLinux/ gets, so both folders see the same database.
+    # Compose may warn that it was created by another project - that is expected.
+    name: ${PROJECT_NAME}_db_data
+
+# PROJECT_SUBNET is picked per project by docker-common.sh (172.16.x.0/24), so Docker never
+# picks 192.168.x and clashes with a home/office router. The fallback is used when
+# compose is run directly without the scripts.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${PROJECT_SUBNET:-172.16.251.0/24}
+  domains:
+    external: true
